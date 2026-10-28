@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduBridge — Enterprise Hybrid Learning Platform</title>
+  <!-- Google Fonts: Manrope & Inter (Closest open-source match to Forma DJR Micro) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Manrope', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+          },
+          colors: {
+            hp: {
+              primary: '#024ad8',        // HP Electric Blue (lone signal CTA)
+              'primary-bright': '#296ef9',
+              'primary-deep': '#0e3191',
+              'primary-soft': '#c9e0fc',
+              ink: '#1a1a1a',            // Near-black headline & body ink
+              'ink-deep': '#000000',
+              'ink-soft': '#292929',
+              canvas: '#ffffff',
+              cloud: '#f7f7f7',          // Alternating section band
+              fog: '#e8e8e8',            // Outer panels & hairline
+              steel: '#c2c2c2',
+              graphite: '#636363',
+              charcoal: '#3d3d3d',
+              hairline: '#e8e8e8',
+              'bloom-coral': '#ff5050',
+              'bloom-deep': '#b3262b',
+              'storm-deep': '#356373'
+            }
+          },
+          boxShadow: {
+            'soft-lift': '0 2px 8px rgba(26, 26, 26, 0.08)',
+            'floating-modal': '0 8px 24px rgba(26, 26, 26, 0.12)'
+          },
+          borderRadius: {
+            'hp-btn': '4px',             // Sharp 4px on interactive buttons
+            'hp-card': '16px',           // Soft 16px on container cards
+            'hp-pill': '9999px'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Manrope', sans-serif;
+      background-color: #ffffff;
+      color: #1a1a1a;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* HP Diagonal Chevron Slash Decoration (Wordmark Slash Motif) */
+    .hp-chevron-slash {
+      display: inline-block;
+      width: 12px;
+      height: 38px;
+      background-color: #024ad8;
+      transform: skewX(-24deg);
+      border-radius: 0px;
+    }
+    .hp-chevron-slash-sm {
+      display: inline-block;
+      width: 6px;
+      height: 20px;
+      background-color: #024ad8;
+      transform: skewX(-24deg);
+    }
+    /* HP Two-tier Radius & Button uppercase tracking */
+    .btn-hp-primary {
+      background-color: #024ad8;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      border-radius: 4px;
+      padding: 10px 20px;
+      transition: background-color 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-hp-primary:hover {
+      background-color: #0e3191;
+    }
+    .btn-hp-outline {
+      background-color: #ffffff;
+      color: #024ad8;
+      border: 1px solid #024ad8;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      border-radius: 4px;
+      padding: 10px 20px;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-hp-outline:hover {
+      background-color: #f7f7f7;
+    }
+    .btn-hp-ink {
+      background-color: #1a1a1a;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      border-radius: 4px;
+      padding: 10px 20px;
+      transition: background-color 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-hp-ink:hover {
+      background-color: #000000;
+    }
+    .hp-card {
+      background-color: #ffffff;
+      border: 1px solid #e8e8e8;
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(26, 26, 26, 0.08);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #c2c2c2;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-white text-hp-ink min-h-screen flex flex-col">
+
+  <!-- 1. HP Signature Top Utility Strip (36px, Near-Black Ink) -->
+  <aside class="bg-hp-ink text-white h-9 px-4 sm:px-8 flex items-center justify-between text-[11px] font-medium border-b border-hp-ink-soft select-none">
+    <div class="flex items-center gap-6">
+      <div class="flex items-center gap-2">
+        <span class="hp-chevron-slash-sm bg-hp-primary"></span>
+        <span class="tracking-wider uppercase font-semibold text-slate-200">EduBridge by Cloudrule Technology</span>
+      </div>
+      <div class="hidden md:flex items-center gap-4 text-slate-400">
+        <span class="text-white font-semibold">For Schools</span>
+        <span>•</span>
+        <span>Classes 3 to 12</span>
+        <span>•</span>
+        <span>PostgreSQL 18 Connected</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-4 text-slate-300">
+      <span class="hidden sm:inline text-slate-400">Role Quick Switch:</span>
+      <div class="flex items-center gap-1 font-bold">
+        <button onclick="switchRole('admin')" id="roleBtn-admin" class="px-2 py-0.5 rounded text-[11px] uppercase transition bg-hp-primary text-white">Admin</button>
+        <button onclick="switchRole('teacher')" id="roleBtn-teacher" class="px-2 py-0.5 rounded text-[11px] uppercase transition hover:text-white text-slate-400">Teacher</button>
+        <button onclick="switchRole('student4')" id="roleBtn-student4" class="px-2 py-0.5 rounded text-[11px] uppercase transition hover:text-white text-slate-400">Class 4</button>
+        <button onclick="switchRole('student8')" id="roleBtn-student8" class="px-2 py-0.5 rounded text-[11px] uppercase transition hover:text-white text-slate-400">Class 8</button>
+        <button onclick="switchRole('student10')" id="roleBtn-student10" class="px-2 py-0.5 rounded text-[11px] uppercase transition hover:text-white text-slate-400">Class 10</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 2. HP Clean White Top Navigation Bar (64px) -->
+  <header class="bg-white border-b border-hp-hairline sticky top-0 z-40">
+    <div class="max-w-[1366px] mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
+      <!-- Logo + HP Chevron Motif -->
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-1">
+          <span class="hp-chevron-slash"></span>
+          <span class="hp-chevron-slash bg-hp-primary-bright"></span>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <span class="text-2xl font-semibold tracking-tight text-hp-ink">EduBridge</span>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-hp-graphite">Enterprise Hybrid Learning</span>
+        </div>
+      </div>
+
+      <!-- User Session Pill & Status -->
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 pl-3 py-1 pr-4 bg-hp-cloud border border-hp-fog rounded-[9999px]">
+          <div class="w-7 h-7 rounded-full bg-hp-ink text-white text-xs font-bold flex items-center justify-center" id="userAvatar">H</div>
+          <div class="text-left">
+            <p class="text-xs font-semibold leading-tight text-hp-ink" id="userNameLabel">Harish Kumar D</p>
+            <p class="text-[10px] uppercase font-bold tracking-wider text-hp-primary" id="userRoleLabel">SUPER_ADMIN</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 3. Main Workspace Container (1366px Max Width) -->
+  <main class="max-w-[1366px] w-full mx-auto px-4 sm:px-8 py-8 flex-1 space-y-8">
+
+    <!-- ========================================== -->
+    <!-- VIEW 1: ADMIN & TEACHER DASHBOARD          -->
+    <!-- ========================================== -->
+    <div id="adminView" class="space-y-8">
+      
+      <!-- HP Pill Navigation Tabs -->
+      <div class="flex items-center gap-2 border-b border-hp-hairline pb-3 overflow-x-auto custom-scrollbar">
+        <button onclick="switchAdminTab('overview')" class="admin-tab active-tab px-5 py-2 rounded-hp-pill text-xs font-semibold uppercase tracking-[0.5px] bg-hp-ink text-white transition" data-tab="overview">
+          <i class="fa-solid fa-chart-pie mr-1.5"></i> Overview
+        </button>
+        <button onclick="switchAdminTab('classes')" class="admin-tab px-5 py-2 rounded-hp-pill text-xs font-semibold uppercase tracking-[0.5px] text-hp-charcoal hover:bg-hp-cloud transition" data-tab="classes">
+          <i class="fa-solid fa-layer-group mr-1.5"></i> Classes & Sections
+        </button>
+        <button onclick="switchAdminTab('students')" class="admin-tab px-5 py-2 rounded-hp-pill text-xs font-semibold uppercase tracking-[0.5px] text-hp-charcoal hover:bg-hp-cloud transition" data-tab="students">
+          <i class="fa-solid fa-users mr-1.5"></i> Students Directory
+        </button>
+        <button onclick="switchAdminTab('content')" class="admin-tab px-5 py-2 rounded-hp-pill text-xs font-semibold uppercase tracking-[0.5px] text-hp-charcoal hover:bg-hp-cloud transition" data-tab="content">
+          <i class="fa-solid fa-folder-tree mr-1.5"></i> Content Hub
+        </button>
+        <button onclick="switchAdminTab('assignments')" class="admin-tab px-5 py-2 rounded-hp-pill text-xs font-semibold uppercase tracking-[0.5px] text-hp-charcoal hover:bg-hp-cloud transition" data-tab="assignments">
+          <i class="fa-solid fa-clipboard-check mr-1.5"></i> Review Queue & Grading
+        </button>
+        <button onclick="switchAdminTab('live')" class="admin-tab px-5 py-2 rounded-hp-pill text-xs font-semibold uppercase tracking-[0.5px] text-hp-charcoal hover:bg-hp-cloud transition" data-tab="live">
+          <i class="fa-solid fa-video mr-1.5"></i> Live Classes & Attendance
+        </button>
+      </div>
+
+      <!-- Tab: Overview -->
+      <div id="adminTab-overview" class="admin-tab-pane space-y-8">
+        
+        <!-- Hero Promo Card with HP Chevron Slashes -->
+        <div class="hp-card p-8 sm:p-10 relative overflow-hidden bg-white border border-hp-hairline flex flex-col md:flex-row items-center justify-between gap-6">
+          <div class="space-y-2 z-10 max-w-xl">
+            <div class="flex items-center gap-2">
+              <span class="hp-chevron-slash-sm"></span>
+              <span class="text-xs uppercase font-bold tracking-widest text-hp-primary">Enterprise Learning Infrastructure</span>
+            </div>
+            <h1 class="text-3xl sm:text-4xl font-medium leading-tight text-hp-ink">EduBridge Operational Command</h1>
+            <p class="text-sm text-hp-charcoal leading-relaxed">
+              Unified administration, secure grading loops, WebRTC live classrooms, and zero-cost pedagogical AI models over PostgreSQL 18.
+            </p>
+          </div>
+          <div class="flex items-center gap-3 z-10">
+            <button onclick="switchAdminTab('live')" class="btn-hp-primary">
+              <i class="fa-solid fa-tower-broadcast"></i> Start Live Class
+            </button>
+            <button onclick="switchAdminTab('assignments')" class="btn-hp-outline">
+              Review Work
+            </button>
+          </div>
+          <!-- Decorative subtle angled graphic in backdrop -->
+          <div class="absolute right-0 top-0 bottom-0 w-64 bg-hp-cloud/60 -skew-x-12 pointer-events-none hidden lg:block"></div>
+        </div>
+
+        <!-- Metric Cards (Soft Lift, 16px Rounded) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div class="hp-card p-6">
+            <p class="text-xs font-semibold uppercase tracking-wider text-hp-graphite">Total Enrolled</p>
+            <h3 class="text-3xl font-medium text-hp-ink mt-2" id="statStudents">3</h3>
+            <div class="mt-3 flex items-center gap-1.5 text-xs text-hp-primary font-medium">
+              <i class="fa-solid fa-circle-check"></i>
+              <span>Active in PostgreSQL 18</span>
+            </div>
+          </div>
+
+          <div class="hp-card p-6">
+            <p class="text-xs font-semibold uppercase tracking-wider text-hp-graphite">Classes & Batches</p>
+            <h3 class="text-3xl font-medium text-hp-ink mt-2" id="statClasses">3</h3>
+            <div class="mt-3 text-xs text-hp-charcoal">
+              <span>Primary, Middle & High Tiers</span>
+            </div>
+          </div>
+
+          <div class="hp-card p-6">
+            <p class="text-xs font-semibold uppercase tracking-wider text-hp-graphite">Submissions to Grade</p>
+            <h3 class="text-3xl font-medium text-hp-ink mt-2" id="statPendingReviews">0</h3>
+            <div class="mt-3 flex items-center gap-1.5 text-xs text-hp-primary font-medium">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+              <span>AI Evaluation Ready</span>
+            </div>
+          </div>
+
+          <div class="hp-card p-6">
+            <p class="text-xs font-semibold uppercase tracking-wider text-hp-graphite">Live Classes Today</p>
+            <h3 class="text-3xl font-medium text-hp-ink mt-2" id="statLiveToday">1</h3>
+            <div class="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Authenticated WebRTC</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Submissions & AI Engine Panel -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div class="lg:col-span-8 hp-card p-6">
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-hp-hairline">
+              <h4 class="font-medium text-lg text-hp-ink">Recent Student Submissions</h4>
+              <button onclick="switchAdminTab('assignments')" class="text-xs font-semibold text-hp-primary hover:underline uppercase tracking-[0.5px]">View Review Queue</button>
+            </div>
+            <div id="recentSubmissionsList" class="space-y-3">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- HP Dark Navy Slab Card: AI Models Spotlight -->
+          <div class="lg:col-span-4 bg-hp-ink text-white rounded-hp-card p-8 flex flex-col justify-between shadow-soft-lift">
+            <div class="space-y-4">
+              <div class="flex items-center gap-2">
+                <span class="hp-chevron-slash-sm bg-hp-primary-bright"></span>
+                <span class="text-[11px] uppercase font-bold tracking-widest text-hp-primary-bright">Intelligent Pedagogy</span>
+              </div>
+              <h3 class="text-xl font-medium text-white leading-tight">4 Specialized AI Models</h3>
+              <p class="text-xs text-slate-300 leading-relaxed">
+                Operating 100% offline with zero external API fees. Supports student doubt solving, socratic homework guidance, rubric auto-grading, and dynamic revision quizzes.
+              </p>
+              <div class="space-y-2.5 pt-2 text-xs text-slate-200">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-check text-hp-primary-bright text-xs"></i>
+                  <span><strong>Model 1:</strong> Multi-Tier Doubt Solver</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-check text-hp-primary-bright text-xs"></i>
+                  <span><strong>Model 2:</strong> Socratic Homework Guide</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-check text-hp-primary-bright text-xs"></i>
+                  <span><strong>Model 3:</strong> Teacher Auto-Grading Evaluator</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-check text-hp-primary-bright text-xs"></i>
+                  <span><strong>Model 4:</strong> Chapter Quiz Generator</span>
+                </div>
+              </div>
+            </div>
+            <div class="mt-8 pt-4 border-t border-hp-ink-soft flex items-center justify-between text-xs text-slate-400">
+              <span>Status: Offline Engine Ready</span>
+              <span class="font-bold text-hp-primary-bright">100% Operational</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Tab: Classes & Sections -->
+      <div id="adminTab-classes" class="admin-tab-pane hidden space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-2xl font-medium text-hp-ink">Classes & Sections</h3>
+            <p class="text-xs text-hp-graphite">Manage academic cohorts from Grade 3 through 12</p>
+          </div>
+          <button onclick="openModal('createClassModal')" class="btn-hp-primary">
+            <i class="fa-solid fa-plus"></i> Add New Class
+          </button>
+        </div>
+
+        <div class="hp-card overflow-hidden">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-hp-cloud text-hp-graphite uppercase text-[11px] font-bold border-b border-hp-hairline">
+              <tr>
+                <th class="p-4">Grade & Section</th>
+                <th class="p-4">Academic Year</th>
+                <th class="p-4">Pedagogical Tier</th>
+                <th class="p-4">Enrolled Students</th>
+                <th class="p-4">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="classesTableBody" class="divide-y divide-hp-hairline text-xs">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab: Students Directory -->
+      <div id="adminTab-students" class="admin-tab-pane hidden space-y-6">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h3 class="text-2xl font-medium text-hp-ink">Students Directory</h3>
+            <p class="text-xs text-hp-graphite">Class rosters, guardian contacts, and bulk CSV onboarding</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <button onclick="openModal('importCsvModal')" class="btn-hp-outline">
+              <i class="fa-solid fa-file-import"></i> Bulk CSV Import
+            </button>
+            <button onclick="openModal('createStudentModal')" class="btn-hp-primary">
+              <i class="fa-solid fa-user-plus"></i> Add Student
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="flex flex-wrap items-center gap-4 bg-hp-cloud p-4 rounded-hp-card border border-hp-hairline">
+          <div class="flex-1 min-w-[240px] relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-hp-steel text-xs"></i>
+            <input type="text" id="studentSearchInput" oninput="loadAdminStudents()" placeholder="Search student name, roll number, or phone..." class="w-full pl-9 pr-3 py-2 text-xs rounded-hp-btn border border-hp-steel bg-white focus:outline-none focus:border-hp-primary">
+          </div>
+          <select id="studentClassFilter" onchange="loadAdminStudents()" class="px-3 py-2 text-xs rounded-hp-btn border border-hp-steel bg-white focus:outline-none focus:border-hp-primary">
+            <option value="">All Classes</option>
+          </select>
+        </div>
+
+        <div class="hp-card overflow-hidden">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-hp-cloud text-hp-graphite uppercase text-[11px] font-bold border-b border-hp-hairline">
+              <tr>
+                <th class="p-4">Roll No</th>
+                <th class="p-4">Student Name</th>
+                <th class="p-4">Class</th>
+                <th class="p-4">Phone Number</th>
+                <th class="p-4">Guardian</th>
+                <th class="p-4">Status</th>
+                <th class="p-4">Activity</th>
+              </tr>
+            </thead>
+            <tbody id="studentsTableBody" class="divide-y divide-hp-hairline text-xs">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab: Content Hub -->
+      <div id="adminTab-content" class="admin-tab-pane hidden space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-2xl font-medium text-hp-ink">Content Hub & Syllabus Builder</h3>
+            <p class="text-xs text-hp-graphite">Subject, chapter, and material structure with 15-minute signed download URLs</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <button onclick="openModal('createSubjectModal')" class="btn-hp-outline">Add Subject</button>
+            <button onclick="openModal('createChapterModal')" class="btn-hp-outline">Add Chapter</button>
+            <button onclick="openModal('uploadMaterialModal')" class="btn-hp-primary">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Upload Material
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+          <div class="md:col-span-4 hp-card p-5 space-y-3">
+            <div class="flex items-center justify-between pb-2 border-b border-hp-hairline">
+              <span class="text-xs uppercase font-bold text-hp-graphite tracking-wider">Select Subject</span>
+              <span id="subjectCountBadge" class="text-[11px] font-bold px-2 py-0.5 rounded bg-hp-cloud text-hp-primary">0</span>
+            </div>
+            <div id="contentSubjectList" class="space-y-2 max-h-[520px] overflow-y-auto custom-scrollbar">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <div class="md:col-span-8 hp-card p-6 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-hp-hairline">
+              <div>
+                <h4 class="font-medium text-xl text-hp-ink" id="contentSelectedSubjectTitle">Select a Subject</h4>
+                <p class="text-xs text-hp-graphite" id="contentSelectedSubjectSub">Chapters and uploaded documents appear here</p>
+              </div>
+              <button onclick="triggerQuizGenForCurrentSubject()" id="btnGenerateQuizTop" class="hidden btn-hp-outline text-xs">
+                <i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i> AI Chapter Quiz
+              </button>
+            </div>
+            <div id="contentChapterTree" class="space-y-4">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Assignments & Split-Screen Review Queue -->
+      <div id="adminTab-assignments" class="admin-tab-pane hidden space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-2xl font-medium text-hp-ink">Assignments & Review Queue</h3>
+            <p class="text-xs text-hp-graphite">Publish homework, inspect student pages, and grade with AI rubric assistance</p>
+          </div>
+          <button onclick="openModal('createAssignmentModal')" class="btn-hp-primary">
+            <i class="fa-solid fa-plus"></i> Create Assignment
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <!-- Left: Assignment List -->
+          <div class="lg:col-span-5 hp-card p-5 space-y-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-hp-graphite">Active Assignments</h4>
+            <div id="adminAssignmentList" class="space-y-2.5 max-h-[600px] overflow-y-auto custom-scrollbar">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Right: Split Review Queue & Grading Panel -->
+          <div class="lg:col-span-7 hp-card p-6">
+            <div id="emptyReviewQueueNotice" class="py-24 text-center space-y-3">
+              <div class="w-16 h-16 rounded-hp-card bg-hp-cloud text-hp-primary flex items-center justify-center mx-auto text-2xl">
+                <i class="fa-solid fa-file-signature"></i>
+              </div>
+              <h5 class="font-medium text-base text-hp-ink">Select an Assignment to open Review Queue</h5>
+              <p class="text-xs text-hp-graphite max-w-sm mx-auto">Click any assignment from the left to inspect submitted pages, publish answer keys, and grade work.</p>
+            </div>
+
+            <div id="activeReviewQueuePanel" class="hidden space-y-5">
+              <div class="flex items-center justify-between pb-3 border-b border-hp-hairline">
+                <div>
+                  <h4 class="font-medium text-lg text-hp-ink" id="queueAssignmentTitle">Worksheet Review</h4>
+                  <p class="text-xs text-hp-graphite" id="queueAssignmentMeta">Due Date & Max Marks</p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button onclick="openAnswerKeyModal()" class="btn-hp-outline text-xs">
+                    <i class="fa-solid fa-key"></i> Upload Key
+                  </button>
+                  <button onclick="publishAnswerKeyNow()" id="btnPublishKey" class="btn-hp-primary text-xs">
+                    <i class="fa-solid fa-bullhorn"></i> Publish Key
+                  </button>
+                </div>
+              </div>
+
+              <!-- Submissions Table -->
+              <div class="max-h-[300px] overflow-y-auto custom-scrollbar border border-hp-hairline rounded-hp-btn">
+                <table class="w-full text-left text-xs">
+                  <thead class="bg-hp-cloud text-hp-graphite uppercase text-[10px] font-bold sticky top-0">
+                    <tr>
+                      <th class="p-3">Roll</th>
+                      <th class="p-3">Student</th>
+                      <th class="p-3">Status</th>
+                      <th class="p-3">Files</th>
+                      <th class="p-3">Marks</th>
+                      <th class="p-3">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="queueSubmissionsTbody" class="divide-y divide-hp-hairline">
+                    <!-- Rendered via JS -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Grading Workbench Drawer -->
+              <div id="gradingWorkbench" class="hidden p-5 rounded-hp-card bg-hp-cloud border border-hp-fog space-y-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h5 class="font-semibold text-sm text-hp-ink" id="gradingStudentHeader">Grading Submission: Aarav Kumar</h5>
+                    <p class="text-xs text-hp-graphite mt-0.5" id="gradingStudentNotes">Notes: ...</p>
+                  </div>
+                  <button onclick="triggerAIGradingAssist()" class="btn-hp-primary text-xs">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i> AI Grade Assist
+                  </button>
+                </div>
+
+                <!-- Attached Student Files -->
+                <div id="gradingFilesList" class="flex flex-wrap gap-2 pt-1">
+                  <!-- File links -->
+                </div>
+
+                <!-- Marks & Remarks Input -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                  <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-hp-graphite">Marks Awarded (Out of <span id="gradingMaxMarksSpan">25</span>)</label>
+                    <input type="number" id="inputMarksAwarded" step="0.5" class="mt-1 w-full px-3 py-2 text-xs rounded-hp-btn border border-hp-steel bg-white focus:outline-none focus:border-hp-primary">
+                  </div>
+                  <div class="flex items-center gap-2 pt-6">
+                    <input type="checkbox" id="checkRequestResubmit" class="w-4 h-4 text-hp-primary rounded">
+                    <label for="checkRequestResubmit" class="text-xs font-semibold text-hp-ink">Request Resubmission</label>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-[11px] font-bold uppercase tracking-wider text-hp-graphite">Constructive Feedback Remarks</label>
+                  <textarea id="inputFeedbackRemarks" rows="2" class="mt-1 w-full px-3 py-2 text-xs rounded-hp-btn border border-hp-steel bg-white focus:outline-none focus:border-hp-primary" placeholder="Enter teacher remarks for student..."></textarea>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-2">
+                  <button onclick="closeGradingWorkbench()" class="px-4 py-2 text-xs font-semibold text-hp-charcoal hover:bg-hp-fog rounded-hp-btn">Cancel</button>
+                  <button onclick="submitGradingDecision()" class="btn-hp-primary text-xs">Save Grade & Feedback</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Live Classes & Attendance -->
+      <div id="adminTab-live" class="admin-tab-pane hidden space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-2xl font-medium text-hp-ink">Live Classes & WebRTC Attendance</h3>
+            <p class="text-xs text-hp-graphite">Zero-link authenticated classrooms with automatic duration and reconnect tracking</p>
+          </div>
+          <button onclick="openModal('scheduleLiveModal')" class="btn-hp-primary">
+            <i class="fa-solid fa-tower-broadcast"></i> Start or Schedule Session
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div class="lg:col-span-7 hp-card p-6 space-y-4">
+            <h4 class="font-medium text-base text-hp-ink">Scheduled & Active Live Classes</h4>
+            <div id="adminLiveClassesList" class="space-y-3">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <div class="lg:col-span-5 hp-card p-6 space-y-4">
+            <div class="flex items-center justify-between pb-2 border-b border-hp-hairline">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-hp-graphite">Attendance Audit Log</h4>
+              <button onclick="downloadCurrentAttendanceCSV()" id="btnDownloadCsv" class="hidden text-xs text-hp-primary font-bold hover:underline flex items-center gap-1">
+                <i class="fa-solid fa-download"></i> CSV Report
+              </button>
+            </div>
+            <div id="attendanceReportContainer" class="text-center py-16 text-hp-graphite text-xs">
+              Select "Attendance Log" on any live class to view student reconnects, active duration, and export CSV.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- VIEW 2: STUDENT PORTAL (MULTI-TIER)        -->
+    <!-- ========================================== -->
+    <div id="studentView" class="hidden space-y-8">
+      
+      <!-- HP Clean Student Hero Card -->
+      <div id="studentBanner" class="hp-card p-8 sm:p-10 relative overflow-hidden bg-white border border-hp-hairline flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="space-y-2 z-10 max-w-xl">
+          <div class="flex items-center gap-2">
+            <span class="hp-chevron-slash-sm"></span>
+            <span class="text-xs uppercase font-bold tracking-widest text-hp-primary" id="tierBadge">Middle School Tier</span>
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-medium leading-tight text-hp-ink" id="studentWelcomeTitle">Welcome Back, Aarav!</h2>
+          <p class="text-sm text-hp-charcoal leading-relaxed" id="studentClassSubtitle">
+            Class 8-A • Roll: 08A07 • Academic Year 2026-2027
+          </p>
+        </div>
+        <div class="flex items-center gap-3 z-10">
+          <button onclick="openDoubtModal()" class="btn-hp-primary">
+            <i class="fa-solid fa-robot"></i> Ask AI Doubt Solver
+          </button>
+        </div>
+        <!-- Decorative subtle angled graphic in backdrop -->
+        <div class="absolute right-0 top-0 bottom-0 w-64 bg-hp-cloud/60 -skew-x-12 pointer-events-none hidden lg:block"></div>
+      </div>
+
+      <!-- Quick Metrics Strip -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-6">
+        <div class="hp-card p-5 text-center">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-hp-graphite">Enrolled Subjects</p>
+          <h4 class="text-2xl font-medium text-hp-ink mt-1" id="stStatSubjects">3</h4>
+        </div>
+        <div class="hp-card p-5 text-center">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-hp-graphite">Pending Homework</p>
+          <h4 class="text-2xl font-medium text-hp-primary mt-1" id="stStatPending">1</h4>
+        </div>
+        <div class="hp-card p-5 text-center">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-hp-graphite">Submitted & Graded</p>
+          <h4 class="text-2xl font-medium text-emerald-600 mt-1" id="stStatCompleted">1</h4>
+        </div>
+        <div class="hp-card p-5 text-center">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-hp-graphite">Live Class</p>
+          <h4 class="text-2xl font-medium text-hp-ink mt-1" id="stStatLive">1</h4>
+        </div>
+      </div>
+
+      <!-- Live Class Alert Banner (When class is in progress) -->
+      <div id="studentLiveClassAlert" class="hidden">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Main Student Sections: Subjects & Homework -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <!-- Left: Subjects Explorer -->
+        <div class="lg:col-span-7 space-y-4">
+          <div class="flex items-center justify-between pb-2 border-b border-hp-hairline">
+            <h3 class="font-medium text-lg text-hp-ink">My Subjects & Syllabus</h3>
+            <span class="text-xs text-hp-graphite">Click subject to open chapter notes</span>
+          </div>
+
+          <div id="studentSubjectsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Subject cards -->
+          </div>
+
+          <!-- Dynamic Subject Materials Drawer -->
+          <div id="studentSubjectMaterialsDrawer" class="hidden hp-card p-6 space-y-4 mt-4">
+            <div class="flex items-center justify-between pb-2 border-b border-hp-hairline">
+              <h4 class="font-medium text-base text-hp-ink" id="drawerSubjectTitle">Subject Chapters</h4>
+              <button onclick="closeStudentDrawer()" class="text-xs text-hp-graphite hover:text-hp-ink font-semibold">Close</button>
+            </div>
+            <div id="drawerChaptersContainer" class="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar">
+              <!-- Chapter materials -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Assignments & Homework Tracker -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="flex items-center justify-between pb-2 border-b border-hp-hairline">
+            <h3 class="font-medium text-lg text-hp-ink">Homework & Submissions</h3>
+            <span class="text-xs text-hp-graphite">Grade-Locked Roster</span>
+          </div>
+
+          <div id="studentAssignmentsList" class="space-y-3">
+            <!-- Assignment cards -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- 4. HP Dark Navy Slab Footer (Closing Prelude Band) -->
+  <footer class="bg-hp-ink text-white mt-16 py-12 px-4 sm:px-8 border-t border-hp-ink-soft select-none">
+    <div class="max-w-[1366px] mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-1">
+          <span class="hp-chevron-slash-sm bg-hp-primary"></span>
+          <span class="hp-chevron-slash-sm bg-hp-primary-bright"></span>
+        </div>
+        <div>
+          <p class="font-semibold text-sm tracking-tight">EduBridge Enterprise Platform</p>
+          <p class="text-xs text-slate-400">PostgreSQL 18 • FastAPI 0.110 • Offline AI Engine • Jitsi WebRTC</p>
+        </div>
+      </div>
+      <div class="text-xs text-slate-400 text-center md:text-right">
+        <p>© 2026 EduBridge. Prepared for Harish Kumar D, Cloudrule Technology.</p>
+        <p class="text-[11px] text-slate-500 mt-1">Design System: Inspired by HP Enterprise & Consumer White-Paper Language.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========================================== -->
+  <!-- MODALS (All 16px Rounded with HP Styling)   -->
+  <!-- ========================================== -->
+
+  <!-- Modal: Live Classroom (Jitsi IFrame Embed) -->
+  <div id="liveClassroomModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-6">
+    <div class="bg-hp-ink text-white rounded-hp-card w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden shadow-floating-modal border border-hp-ink-soft">
+      <div class="px-6 py-4 bg-hp-ink flex items-center justify-between border-b border-hp-ink-soft">
+        <div class="flex items-center gap-3">
+          <span class="hp-chevron-slash-sm bg-hp-bloom-coral"></span>
+          <div>
+            <h4 class="font-medium text-sm text-white" id="classroomTitle">Live Classroom</h4>
+            <p class="text-[11px] text-slate-400" id="classroomMeta">Secured WebRTC Session</p>
+          </div>
+        </div>
+        <button onclick="leaveLiveClassroom()" class="btn-hp-ink bg-hp-bloom-deep hover:bg-hp-bloom-coral text-white text-xs">
+          <i class="fa-solid fa-phone-slash"></i> Leave Room
+        </button>
+      </div>
+      <div class="flex-1 bg-black relative">
+        <iframe id="jitsiFrame" allow="camera; microphone; display-capture; autoplay; clipboard-write" class="w-full h-full border-0"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: AI Syllabus Doubt Solver -->
+  <div id="doubtModal" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white text-hp-ink rounded-hp-card w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-floating-modal border border-hp-hairline">
+      <div class="p-6 bg-hp-ink text-white flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="hp-chevron-slash-sm bg-hp-primary-bright"></span>
+          <div>
+            <h3 class="font-medium text-base text-white">EduBridge AI Doubt Solver</h3>
+            <p class="text-xs text-slate-300">Step-by-step conceptual mastery tailored to your class level</p>
+          </div>
+        </div>
+        <button onclick="closeModal('doubtModal')" class="w-8 h-8 rounded-hp-btn bg-hp-ink-soft hover:bg-slate-700 text-white flex items-center justify-center">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-4 custom-scrollbar flex-1">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-hp-graphite">What concept or homework question would you like explained?</label>
+          <textarea id="inputDoubtQuestion" rows="3" class="mt-2 w-full p-3 text-xs rounded-hp-btn border border-hp-steel bg-white focus:outline-none focus:border-hp-primary" placeholder="e.g. Explain why drip irrigation saves water compared to sprinkler irrigation..."></textarea>
+        </div>
+
+        <button onclick="askAIDoubt()" id="btnSubmitDoubt" class="btn-hp-primary w-full py-3">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Solve Doubt with AI
+        </button>
+
+        <!-- AI Output Box -->
+        <div id="aiDoubtResultBox" class="hidden p-5 rounded-hp-card bg-hp-cloud border border-hp-fog space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-hp-btn bg-hp-primary-soft text-hp-primary-deep" id="aiDoubtTierTag">Tier</span>
+            <span class="text-[10px] text-hp-graphite">EduBridge Offline Pedagogical Engine</span>
+          </div>
+          <p class="text-xs leading-relaxed font-medium text-hp-ink" id="aiDoubtAnswerText"></p>
+
+          <div class="space-y-1.5 pt-2">
+            <h5 class="text-[11px] font-bold uppercase tracking-wider text-hp-primary">Step-by-Step Logic:</h5>
+            <div id="aiDoubtStepsList" class="space-y-1 text-xs"></div>
+          </div>
+
+          <div class="space-y-1 pt-2">
+            <h5 class="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Key Takeaways:</h5>
+            <div id="aiDoubtTakeawaysList" class="space-y-1 text-xs"></div>
+          </div>
+
+          <div class="p-3 bg-white rounded-hp-btn border border-hp-hairline">
+            <p class="text-[11px] font-bold text-amber-600 flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-question"></i> Practice Self-Check:
+            </p>
+            <p class="text-xs mt-1 text-hp-charcoal" id="aiDoubtPracticeText"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: AI Chapter Quiz -->
+  <div id="quizModal" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white text-hp-ink rounded-hp-card w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-floating-modal border border-hp-hairline">
+      <div class="p-5 bg-hp-ink text-white flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="hp-chevron-slash-sm bg-hp-primary-bright"></span>
+          <div>
+            <h3 class="font-medium text-base text-white" id="quizModalTitle">Chapter Revision Quiz</h3>
+            <p class="text-xs text-slate-300" id="quizModalSub">Instant interactive self-assessment</p>
+          </div>
+        </div>
+        <button onclick="closeModal('quizModal')" class="w-8 h-8 rounded-hp-btn bg-hp-ink-soft hover:bg-slate-700 text-white flex items-center justify-center">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-4 custom-scrollbar flex-1" id="quizContentBody">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Homework Submission -->
+  <div id="submitHomeworkModal" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white text-hp-ink rounded-hp-card w-full max-w-lg shadow-floating-modal border border-hp-hairline p-6 space-y-4">
+      <div class="flex items-center justify-between pb-2 border-b border-hp-hairline">
+        <div>
+          <h3 class="font-medium text-base text-hp-ink" id="submitModalTitle">Submit Assignment</h3>
+          <p class="text-xs text-hp-graphite" id="submitModalSub">Attach multiple pages / PDF</p>
+        </div>
+        <button onclick="closeModal('submitHomeworkModal')" class="text-hp-graphite hover:text-hp-ink">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider text-hp-graphite">Student Notes / Remarks</label>
+        <textarea id="inputSubmitNotes" rows="2" class="mt-1 w-full p-2.5 text-xs rounded-hp-btn border border-hp-steel bg-white focus:outline-none focus:border-hp-primary" placeholder="e.g. Completed questions 1-5, diagram attached on page 2"></textarea>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider text-hp-graphite">Attach Files (PDF, JPEG, PNG - Max 25 MB)</label>
+        <input type="file" id="inputSubmitFiles" multiple class="mt-1 w-full text-xs text-hp-graphite file:mr-4 file:py-2 file:px-4 file:rounded-hp-btn file:border-0 file:text-xs file:font-semibold file:bg-hp-cloud file:text-hp-primary hover:file:bg-hp-fog">
+      </div>
+
+      <div class="flex items-center justify-between pt-3 border-t border-hp-hairline">
+        <button onclick="triggerSocraticHintForAssignment()" class="text-xs text-hp-primary font-bold hover:underline flex items-center gap-1">
+          <i class="fa-solid fa-lightbulb text-amber-500"></i> Need a Socratic Hint?
+        </button>
+        <button onclick="executeSubmitHomework()" class="btn-hp-primary text-xs">
+          Upload & Submit Work
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Bulk CSV Import -->
+  <div id="importCsvModal" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white text-hp-ink rounded-hp-card w-full max-w-md shadow-floating-modal border border-hp-hairline p-6 space-y-4">
+      <div class="flex items-center justify-between pb-2 border-b border-hp-hairline">
+        <h3 class="font-medium text-base text-hp-ink">Bulk CSV Student Import</h3>
+        <button onclick="closeModal('importCsvModal')" class="text-hp-graphite hover:text-hp-ink">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider text-hp-graphite">Target Class</label>
+        <select id="importTargetClassSelect" class="mt-1 w-full p-2.5 text-xs rounded-hp-btn border border-hp-steel bg-white"></select>
+      </div>
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider text-hp-graphite">Select CSV File</label>
+        <input type="file" id="importCsvFileInput" accept=".csv" class="mt-1 w-full text-xs text-hp-graphite">
+        <p class="text-[10px] text-hp-graphite mt-1">Columns: roll_number, full_name, phone_number, guardian_name, guardian_phone</p>
+      </div>
+      <div class="flex items-center justify-end gap-3 pt-3 border-t border-hp-hairline">
+        <button onclick="downloadSampleCsv()" class="text-xs text-hp-primary font-bold hover:underline mr-auto">Download Sample CSV</button>
+        <button onclick="executeCsvImport()" class="btn-hp-primary text-xs">Import CSV</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create Class -->
+  <div id="createClassModal" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white text-hp-ink rounded-hp-card w-full max-w-sm shadow-floating-modal border border-hp-hairline p-6 space-y-4">
+      <h3 class="font-medium text-base text-hp-ink">Add New Class</h3>
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider text-hp-graphite">Grade Level (3 to 12)</label>
+        <input type="number" id="inputClassGrade" min="3" max="12" value="9" class="mt-1 w-full p-2.5 text-xs rounded-hp-btn border border-hp-steel bg-white">
+      </div>
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider text-hp-graphite">Section</label>
+        <input type="text" id="inputClassSection" value="A" class="mt-1 w-full p-2.5 text-xs rounded-hp-btn border border-hp-steel bg-white">
+      </div>
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider text-hp-graphite">Academic Year</label>
+        <input type="text" id="inputClassYear" value="2026-2027" class="mt-1 w-full p-2.5 text-xs rounded-hp-btn border border-hp-steel bg-white">
+      </div>
+      <div class="flex justify-end gap-2 pt-3 border-t border-hp-hairline">
+        <button onclick="closeModal('createClassModal')" class="px-3 py-1.5 text-xs text-hp-graphite">Cancel</button>
+        <button onclick="executeCreateClass()" class="btn-hp-primary text-xs">Create Class</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create Assignment -->
+  <div id="createAssignmentModal" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white text-hp-ink rounded-hp-card w-full max-w-md shadow-floating-modal border border-hp-hairline p-6 space-y-4">
+      <h3 class="font-medium text-base text-hp-ink">Create New Assignment</h3>
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider text-hp-graphite">Target Class & Subject</label>
+        <select id="asgnClassSelect" onchange="loadSubjectsForAsgnSelect()" class="mt-1 w-full p-2 text-xs rounded-hp-btn border border-hp-steel bg-white mb-2"></select>
+        <select id="asgnSubjectSelect" class="w-full p-2 text-xs rounded-hp-btn border border-hp-steel bg-white"></select>
+      </div>
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider text-hp-graphite">Assignment Title</label>
+        <input type="text" id="asgnTitleInput" placeholder="e.g. Science Worksheet 5: Microorganisms" class="mt-1 w-full p-2 text-xs rounded-hp-btn border border-hp-steel bg-white">
+      </div>
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider text-hp-graphite">Instructions</label>
+        <textarea id="asgnInstructionsInput" rows="2" placeholder="Answer questions 1 to 5 and upload clear photos" class="mt-1 w-full p-2 text-xs rounded-hp-btn border border-hp-steel bg-white"></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-hp-graphite">Max Marks</label>
+          <input type="number" id="asgnMaxMarksInput" value="25" class="mt-1 w-full p-2 text-xs rounded-hp-btn border border-hp-steel bg-white">
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-hp-graphite">Due Date</label>
+          <input type="datetime-local" id="asgnDueDateInput" class="mt-1 w-full p-2 text-xs rounded-hp-btn border border-hp-steel bg-white">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-3 border-t border-hp-hairline">
+        <button onclick="closeModal('createAssignmentModal')" class="px-3 py-1.5 text-xs text-hp-graphite">Cancel</button>
+        <button onclick="executeCreateAssignment()" class="btn-hp-primary text-xs">Publish Assignment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Schedule Live Class -->
+  <div id="scheduleLiveModal" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white text-hp-ink rounded-hp-card w-full max-w-md shadow-floating-modal border border-hp-hairline p-6 space-y-4">
+      <h3 class="font-medium text-base text-hp-ink">Start or Schedule Live Session</h3>
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider text-hp-graphite">Target Class & Subject</label>
+        <select id="liveClassSelect" onchange="loadSubjectsForLiveSelect()" class="mt-1 w-full p-2 text-xs rounded-hp-btn border border-hp-steel bg-white mb-2"></select>
+        <select id="liveSubjectSelect" class="w-full p-2 text-xs rounded-hp-btn border border-hp-steel bg-white"></select>
+      </div>
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider text-hp-graphite">Topic / Session Title</label>
+        <input type="text" id="liveTitleInput" placeholder="e.g. Chapter 3: Coal and Petroleum Discussion" class="mt-1 w-full p-2 text-xs rounded-hp-btn border border-hp-steel bg-white">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-hp-graphite">Duration (Minutes)</label>
+          <input type="number" id="liveDurationInput" value="45" class="mt-1 w-full p-2 text-xs rounded-hp-btn border border-hp-steel bg-white">
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-hp-graphite">Start Time</label>
+          <input type="datetime-local" id="liveStartTimeInput" class="mt-1 w-full p-2 text-xs rounded-hp-btn border border-hp-steel bg-white">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-3 border-t border-hp-hairline">
+        <button onclick="closeModal('scheduleLiveModal')" class="px-3 py-1.5 text-xs text-hp-graphite">Cancel</button>
+        <button onclick="executeScheduleLiveClass()" class="btn-hp-primary text-xs">Start / Schedule Now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed bottom-6 right-6 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- Main JavaScript Application Logic -->
+  <script src="/static/app.js"></script>
+</body>
+</html>

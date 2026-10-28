@@ -1,0 +1,1797 @@
+=== PAGE 1 ===
+EduBridge — Complete Project
+Documentation
+Student Management & Hybrid Learning Platform for Classes 3–12 · Prepared for Harish
+Kumar D, Cloudrule Technology · Version 2.0 · 16 October 2026
+1. Executive Summary
+EduBridge is a hybrid ed-tech platform that connects school students (Classes 3 to 12)
+with teachers and institutional administrators. It replaces scattered WhatsApp groups,
+emails and paper homework with one secure system for study material, assignments,
+grading, live classes and attendance.
+The platform has three deliverables:
+Supporting services: Redis (cache and queue), Celery workers, S3 or Cloudflare R2 (file
+storage), Firebase Cloud Messaging (push), Jitsi Meet or Zoom Video SDK (live classes),
+Nginx (reverse proxy and TLS), Docker Compose (deployment).
+Delivery plan: Phase 1 (MVP) delivers student and admin flows with the full assignment
+loop. Phase 2 adds push notifications and live classes with attendance. Phase 3 adds the
+teacher portal, parent reports, offline caching and an AI doubt solver.
+2. Problem Statement and Objectives
+2.1 Problems being solved
+1. Fragmented communication. Notes, homework and doubts are spread across
+WhatsApp, email and paper, so nothing is searchable or auditable.
+2. No central evaluation. Staff cannot see who submitted what and when, and feedback
+is not structured or stored.
+Deliverable Technology Users
+Student mobile app Flutter (Android first) Students, Classes 3–
+12
+Admin web
+dashboard
+React + TypeScript + Tailwind Super Admin,
+Teachers
+Backend API FastAPI (Python 3.12), SQLAlchemy,
+PostgreSQL 16
+Both clients
+EduBridge – Complete Project Documentation
+Page 1 of 47
+
+=== PAGE 2 ===
+3. Insecure live classes. Ad-hoc meeting links get shared, strangers join, and attendance
+is taken by hand.
+4. Low bandwidth and low-end devices. Many students are on 2G/3G and phones with
+2–3 GB RAM. The app must load fast, cache PDFs and fail gracefully.
+2.2 Objectives and success measures
+3. Scope
+3.1 In scope
+Authentication with phone number and password, role-based access control (RBAC).
+Class, section, subject, chapter and material management.
+Student management including bulk CSV import with generated credentials.
+Assignment publishing, multi-file student submission, grading with marks and remarks,
+answer-key publishing.
+Live classes: schedule, start, join, leave, attendance report (CSV).
+Push notifications through FCM.
+Audit data: last login, assignment completion rate, live attendance.
+3.2 Out of scope for v1
+iOS app (Flutter code stays portable; release is a later decision).
+Online payments and fee management.
+Public student profiles or any social features.
+Objective Measure of success
+Single source of truth for study
+content
+100% of notes, videos and answer keys served
+from the platform
+End-to-end assignment lifecycle Teacher posts, student submits, teacher grades,
+student sees result, all inside the app
+Secure live classroom Zero shared links; join only via authenticated one-
+tap entry
+Automatic attendance Join time, duration and reconnects logged without
+manual entry
+Works on weak networks Uploads resume after drop; PDFs open offline
+once downloaded
+EduBridge – Complete Project Documentation
+Page 2 of 47
+
+=== PAGE 3 ===
+Proctored online exams.
+4. Users, Roles and Permissions
+4.1 Roles
+4.2 Permission matrix
+Role Medium Description
+STUDENT Android app Sees only content, assignments and live
+classes of their own class. Three UI
+modes: Classes 3–5 (large buttons, icons),
+Classes 6–8 (structured navigation),
+Classes 9–12 (dense dashboard, analytics,
+dark mode).
+TEACHER Web dashboard (Phase 3
+scoping)
+Authors material, grades work, starts live
+classes. Scoped to assigned classes and
+subjects.
+SUPER_ADMIN Web dashboard Full control over users, classes, content,
+assignments, live classes and reports.
+Capability STUDENT TEACHER SUPER_ADMIN
+Log in, view own profile Yes Yes Yes
+View material of own class Yes Assigned classes All
+Upload or edit material No Assigned subjects All
+Create assignment No Assigned subjects All
+Submit assignment Own only No No
+Grade submission No Assigned subjects All
+Publish answer key No Assigned subjects All
+Start or schedule live class No Assigned classes All
+Join live class Own class Yes Yes
+Download attendance report No Assigned classes All
+Create students, classes, subjects No No Yes
+EduBridge – Complete Project Documentation
+Page 3 of 47
+
+=== PAGE 4 ===
+Grade locking rule: every student query is filtered by the student's registered class_id on
+the server. A Class 4 student can never read a Class 10 resource, even with a guessed ID.
+5. System Architecture
+5.1 Logical components
+5.2 Request flow
+1. Client sends HTTPS request with header Authorization: Bearer <JWT>.
+2. Nginx forwards to FastAPI. The auth dependency decodes the token, loads the user,
+checks is_active.
+Capability STUDENT TEACHER SUPER_ADMIN
+Create teachers, change roles No No Yes
+Layer Component Responsibility
+Client Flutter app Student UI, offline cache, camera scan to
+PDF, resumable upload, FCM receiver
+Client React admin Content builder, student management,
+grading suite, live dispatcher, reports
+Edge Nginx TLS termination, gzip, upload size limit, rate
+limiting, static admin build
+API FastAPI app JWT validation, RBAC, business rules, signed
+file URLs
+API Modules auth, students, content, assignments, live,
+notifications, reports
+Async Celery + Redis Push fan-out, CSV import jobs, report
+generation, PDF stitching
+Data PostgreSQL 16 Relational data with constraints and indexes
+Data S3 / Cloudflare R2 Private bucket for PDFs, videos, submissions,
+answer keys
+External Firebase FCM Push delivery to Android devices
+External Jitsi (self-hosted or 8x8) / Zoom
+SDK
+Video rooms
+EduBridge – Complete Project Documentation
+Page 4 of 47
+
+=== PAGE 5 ===
+3. A role guard checks the endpoint's allowed roles. For students the class filter is
+applied automatically.
+4. The module runs business logic against PostgreSQL.
+5. For files, the API never returns permanent URLs. It returns signed URLs that expire in
+15 minutes.
+6. Slow work (push fan-out, imports) is queued to Celery and the API returns
+immediately.
+5.3 Deployment topology
+6. Functional Requirements
+6.1 Authentication and profile
+Container Image Port Notes
+nginx nginx:stable 80, 443 Serves admin build, proxies /api to
+backend
+api edubridge-
+backend
+8000 Uvicorn with 2–4 workers
+worker edubridge-
+backend
+– Celery worker, same image
+db postgres:16 5432 Volume for data, hourly backups
+redis redis:7 6379 Cache and Celery broker
+jitsi
+(optional)
+jitsi/web stack 443,
+10000/udp
+Only if self-hosting video
+ID Requirement Priority
+FR-AUTH-01 Log in with phone number and password; return
+JWT and profile
+Must
+FR-AUTH-02 Passwords stored as salted hashes (bcrypt or
+PBKDF2), never plain text
+Must
+FR-AUTH-03 Deactivated users are rejected at login and on
+every request
+Must
+EduBridge – Complete Project Documentation
+Page 5 of 47
+
+=== PAGE 6 ===
+6.2 Content hub
+6.3 Assignments
+ID Requirement Priority
+FR-AUTH-04 Student can change own password; admin can
+reset any password
+Must
+FR-AUTH-05 Record last_login_at on each successful login Should
+FR-AUTH-06 OTP login by SMS as an alternative Could (Phase 2)
+ID Requirement Priority
+FR-CON-01 Hierarchy Subject, Chapter, Material; ordered by
+order_index
+Must
+FR-CON-02 Material types: PDF_NOTES, VIDEO_STREAM,
+DOC, EXTERNAL_LINK
+Must
+FR-CON-03 Chapters can have a release_at date; students see
+them only after it
+Should
+FR-CON-04 PDF viewer inside the app with user watermark;
+downloads allowed only when is_downloadable is
+true
+Must
+FR-CON-05 Video playback speed 0.75x to 2.0x; offline
+download with encryption
+Should
+ID Requirement Priority
+FR-ASG-01 Admin or teacher creates assignment with title,
+class, subject, instructions, due date, max marks,
+optional question file
+Must
+FR-ASG-02 Publishing triggers a push to all students of the
+class
+Must
+FR-ASG-03 Student submits one or more images or PDFs plus
+optional notes; app stitches photos into one PDF
+Must
+FR-ASG-04 Server enforces due date; late submission allowed
+only if allow_late_submission is true, then marked
+LATE
+Must
+EduBridge – Complete Project Documentation
+Page 6 of 47
+
+=== PAGE 7 ===
+6.4 Live classes
+6.5 Administration and reports
+ID Requirement Priority
+FR-ASG-05 Student may resubmit until graded, or when status
+is RESUBMISSION_REQUESTED
+Should
+FR-ASG-06 Grader enters marks (0 to max_marks) and
+remarks; student is notified
+Must
+FR-ASG-07 Answer key stays hidden until published;
+publishing notifies the class
+Must
+FR-ASG-08 Student status shown as Pending, Submitted,
+Reviewed (graded) or Overdue
+Must
+FR-ASG-09 Submission time is the server time, never the
+device clock
+Must
+ID Requirement Priority
+FR-LIV-01 Start an instant class or schedule one for a class
+and subject
+Must
+FR-LIV-02 Students join with one tap; server issues a short-
+lived meeting token
+Must
+FR-LIV-03 Only students of that class can obtain a token Must
+FR-LIV-04 Attendance records join time, leave time, total
+seconds and reconnect count
+Must
+FR-LIV-05 Admin exports attendance as CSV Must
+FR-LIV-06 Students join muted; hand-raise and moderated
+chat available; admin can mute all
+Should
+FR-LIV-07 High-priority push sent when a class goes live Must
+ID Requirement Priority
+FR-ADM-01 CRUD for classes, sections, subjects, chapters,
+materials
+Must
+EduBridge – Complete Project Documentation
+Page 7 of 47
+
+=== PAGE 8 ===
+7. Screen Specifications
+7.1 Student mobile app
+ID Requirement Priority
+FR-ADM-02 Create students one by one or by CSV import;
+credentials generated and downloadable
+Must
+FR-ADM-03 Dashboard counters: students, active today,
+pending reviews, live now
+Should
+FR-ADM-04 Student activity report: last login, completion
+percentage, attendance percentage
+Should
+FR-ADM-05 Deactivate a student without deleting history Must
+Screen Contents and behaviour
+Splash Logo, checks stored token, routes to Login or Home
+Login Phone number, password, Login button, inline error
+text, no self sign-up
+Home Greeting, class label, cards for Pending
+assignments, Overdue count, Next live class,
+subject grid
+Subjects Grid of subjects for the student's class
+Chapters Ordered chapter list per subject; locked chapters
+show release date
+Material list Items with type icon, size, download button, offline
+badge
+PDF viewer Pinch zoom, page jump, watermark with student
+name and roll number
+Video player Speed control, resume position, download for
+offline
+Assignments Tabs: Pending, Submitted, Reviewed, Overdue; due
+date countdown
+Assignment detail Instructions, question file, answer key if published,
+submission status
+EduBridge – Complete Project Documentation
+Page 8 of 47
+
+=== PAGE 9 ===
+Grade-adaptive UI: Classes 3–5 use large tiles, illustrated icons and a simplified bottom
+bar (Learn, Homework, Live). Classes 6–12 add search, bookmarks and dark mode. Classes
+9–12 add a progress analytics card.
+7.2 Admin web dashboard
+Screen Contents and behaviour
+Submit work Camera capture of multiple pages, reorder, crop,
+PDF preview, notes field, upload with progress and
+retry
+Result Marks out of max, remarks, link to answer key
+Live classes Today and upcoming list; LIVE badge; Join button
+Live room Jitsi/Zoom view; auto-mute; raise-hand button
+Notifications Inbox of pushes with deep links
+Profile Name, roll number, class, guardian name, change
+password, logout
+Screen Contents and behaviour
+Login Phone and password; role-based redirect
+Dashboard Counters, recent submissions, today's live classes
+Classes Table of classes and sections with student counts;
+create and edit
+Students Searchable table with class filter, status toggle,
+create, CSV import, export credentials
+Student detail Profile, activity log, assignment history, attendance
+Content builder Tree of Subject, Chapter, Material; drag and drop
+upload; release date picker
+Assignments List with due date and submission counts; create
+form with file upload
+Review queue Split view: submission files on the left, marks and
+remarks form on the right; next and previous
+navigation
+Answer keys Upload key, publish individually or in bulk after the
+deadline
+EduBridge – Complete Project Documentation
+Page 9 of 47
+
+=== PAGE 10 ===
+8. Data Model
+The PostgreSQL schema from the proposal is kept and extended. Primary keys are UUID.
+All timestamps are timestamptz stored in UTC.
+Screen Contents and behaviour
+Live classes Schedule form, Start now, live status, End class
+Attendance Per class report table with CSV download
+Users Teachers and admins; role assignment; password
+reset
+Table Key columns Notes
+users id, phone_number (unique), email
+(unique, nullable), password_hash,
+full_name, role, is_active,
+last_login_at, created_at,
+updated_at
+role enum SUPER_ADMIN,
+TEACHER, STUDENT
+classes id, grade_level (3–12), section,
+academic_year
+unique on grade, section, year
+students id, user_id, class_id, roll_number,
+guardian_name, guardian_phone
+unique on class_id and
+roll_number
+subjects id, class_id, name, code,
+thumbnail_url
+per class
+chapters id, subject_id, title, order_index,
+release_at
+release_at added for scheduled
+topics
+materials id, chapter_id, title, material_type,
+file_key, file_size_bytes,
+is_downloadable, created_at
+file_key is a storage key, not a
+public URL
+assignments id, class_id, subject_id, title,
+instructions, attachment_key,
+answer_key_key,
+answer_key_published,
+max_marks, due_date,
+allow_late_submission, created_by,
+created_at
+answer_key_published added
+EduBridge – Complete Project Documentation
+Page 10 of 47
+
+=== PAGE 11 ===
+8.1 Relationships
+One user has zero or one student profile.
+One class has many students, subjects, assignments and live classes.
+One subject has many chapters; one chapter has many materials.
+One assignment has many submissions; each student has at most one submission per
+assignment.
+One live class has many attendance rows; each student has at most one row per class.
+8.2 Indexes
+Table Key columns Notes
+submissions id, assignment_id, student_id,
+file_keys (JSON array),
+student_notes, marks_awarded,
+feedback_remarks, status,
+submitted_at, graded_at,
+graded_by
+file_keys supports many files;
+unique on assignment and student
+live_classes id, class_id, subject_id, title,
+meeting_room_id (unique),
+meeting_passcode,
+scheduled_start,
+duration_minutes, status,
+recording_url, created_by
+status SCHEDULED,
+IN_PROGRESS, COMPLETED,
+CANCELLED
+live_attendance id, live_class_id, student_id,
+joined_at, left_at,
+duration_seconds, reconnects
+unique on class and student
+device_tokens id, user_id, token (unique),
+platform, created_at
+FCM registration tokens
+audit_logs id, actor_id, action, entity,
+entity_id, meta (JSON), created_at
+Admin actions such as grading and
+publishing
+Index Purpose
+students(class_id) Roster queries
+assignments(class_id, due_date) Student assignment list sorted by due date
+submissions(assignment_id) Review queue
+EduBridge – Complete Project Documentation
+Page 11 of 47
+
+=== PAGE 12 ===
+8.3 Status rules
+Index Purpose
+submissions(student_id) Student history
+live_classes(class_id, scheduled_start) Upcoming class lookup
+users(phone_number) Login
+Status shown to student Condition
+Pending No submission and now is before due date
+Overdue No submission and now is after due date
+Submitted Submission exists and status is SUBMITTED or
+LATE
+Reviewed Submission status is GRADED
+Resubmit Submission status is RESUBMISSION_REQUESTED
+EduBridge – Complete Project Documentation
+Page 12 of 47
+
+=== PAGE 13 ===
+9. API Specification
+9.1 Conventions
+Paginated response shape
+{
+  "items": [],
+  "page": 1,
+  "page_size": 20,
+  "total": 134
+}
+Error response shape (all errors)
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "marks must be between 0 and 100",
+    "details": [
+      { "field": "marks", "issue": "max_exceeded" }
+    ]
+  }
+}
+Item Rule
+Base URL https://api.edubridge.example/api/v1
+Authentication Header Authorization: Bearer <access_token> on
+every endpoint except login
+Content types application/json for normal calls; multipart/form-
+data for uploads
+Identifiers UUID v4 strings
+Timestamps ISO 8601 in UTC, for example 2026-11-20T09:30:00Z
+Pagination Query page (default 1) and page_size (default 20,
+max 100)
+File access Responses carry signed URLs valid for 900
+seconds; request the resource again to refresh
+EduBridge – Complete Project Documentation
+Page 13 of 47
+
+=== PAGE 14 ===
+9.2 Endpoint index
+HTTP
+status
+Meaning Typical code
+200 / 201 Success / created none
+400 Business rule violated LATE_NOT_ALLOWED,
+ALREADY_GRADED
+401 Missing, expired or invalid token;
+wrong credentials
+INVALID_CREDENTIALS,
+TOKEN_EXPIRED
+403 Role or class not permitted FORBIDDEN
+404 Resource missing or not visible to this
+user
+NOT_FOUND
+409 Duplicate PHONE_EXISTS, ROLL_EXISTS
+413 Upload larger than limit FILE_TOO_LARGE
+422 Validation failure VALIDATION_ERROR
+429 Rate limit RATE_LIMITED
+500 Server error INTERNAL_ERROR
+Method Path Role Purpose
+POST /auth/login Public Log in
+GET /auth/me Any Current profile
+POST /auth/change-password Any Change own
+password
+POST /devices/register Any Save FCM token
+DELETE /devices/{token} Any Remove FCM token
+on logout
+GET /student/dashboard Student Home screen data
+GET /content/subjects/{subject_id}/materials Student,
+Admin
+Chapter tree with
+signed URLs
+POST /admin/classes Admin Create class
+EduBridge – Complete Project Documentation
+Page 14 of 47
+
+=== PAGE 15 ===
+Method Path Role Purpose
+GET /admin/classes Admin List classes
+POST /admin/students Admin Create student
+GET /admin/students Admin List students
+PATCH /admin/students/{id} Admin Edit or deactivate
+POST /admin/students/import Admin Bulk CSV import
+GET /admin/students/{id}/activity Admin Activity report
+GET /admin/stats Admin Dashboard counters
+POST /admin/subjects Admin Create subject
+POST /admin/chapters Admin Create chapter
+POST /admin/materials Admin Upload material
+DELETE /admin/materials/{id} Admin Remove material
+GET /assignments/list Student,
+Admin
+List assignments
+GET /assignments/{id} Student,
+Admin
+Assignment detail
+POST /assignments/create Admin Create assignment
+POST /assignments/{id}/submit Student Submit work
+GET /assignments/{id}/my-submission Student Own submission and
+result
+GET /admin/assignments/{id}/submissions Admin Review queue
+PATCH /admin/submissions/{id}/grade Admin Grade a submission
+POST /admin/assignments/{id}/answer-key Admin Upload answer key
+POST /admin/assignments/{id}/publish-answer-
+key
+Admin Publish answer key
+POST /live/start Admin Start or schedule a
+class
+GET /live/upcoming Student,
+Admin
+Today and upcoming
+classes
+EduBridge – Complete Project Documentation
+Page 15 of 47
+
+=== PAGE 16 ===
+9.3 Authentication
+POST /auth/login
+Request
+{
+  "phone": "9876543210",
+  "password": "Student@123"
+}
+Response 200
+Method Path Role Purpose
+POST /live/{id}/join Student,
+Admin
+Get meeting token,
+log attendance
+POST /live/{id}/leave Student Close attendance
+record
+POST /live/{id}/end Admin End a class
+GET /live/{id}/attendance Admin Attendance JSON
+GET /live/{id}/attendance.csv Admin Attendance CSV
+GET /files/{token} Any Download through
+signed URL
+EduBridge – Complete Project Documentation
+Page 16 of 47
+
+=== PAGE 17 ===
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 43200,
+  "user": {
+    "id": "6f1c1b0e-6a52-4d0a-9f4b-0e2f0a1d7c11",
+    "full_name": "Aarav Kumar",
+    "phone_number": "9876543210",
+    "role": "STUDENT",
+    "student": {
+      "id": "b3d6a7f2-1c3e-4a55-8a0e-2f6d9c4e1a90",
+      "roll_number": "07",
+      "class_id": "0d9a5c64-2b1f-47a7-9e11-3c5b8d2f6a01",
+      "grade_level": 8,
+      "section": "A",
+      "guardian_name": "Suresh Kumar"
+    }
+  }
+}
+Error 401
+{
+  "error": { "code": "INVALID_CREDENTIALS", "message": "Phone or password is 
+incorrect" }
+}
+Rules: inactive users receive 401 ACCOUNT_DISABLED. Five failed attempts from one
+phone within ten minutes return 429.
+GET /auth/me
+Returns the same user object as in the login response.
+POST /auth/change-password
+{
+  "current_password": "Student@123",
+  "new_password": "NewStrong#2026"
+}
+Response 200
+{ "message": "Password updated" }
+New password must be at least 8 characters.
+EduBridge – Complete Project Documentation
+Page 17 of 47
+
+=== PAGE 18 ===
+9.4 Devices and push tokens
+POST /devices/register
+{
+  "token": "fcm_device_registration_token_string",
+  "platform": "android"
+}
+Response 200
+{ "message": "registered" }
+If the token already exists it is moved to the current user. Call DELETE /devices/{token}
+on logout.
+9.5 Student dashboard
+GET /student/dashboard
+Response 200
+{
+  "student": {
+    "full_name": "Aarav Kumar",
+    "roll_number": "07",
+    "grade_level": 8,
+    "section": "A"
+  },
+  "subjects": [
+    {
+      "id": "2a8e5d10-77c4-4b0e-9a63-1d7f0c9b3e21",
+      "name": "Science",
+      "code": "SCI8",
+      "thumbnail_url": null,
+      "chapter_count": 12
+    }
+  ],
+  "metrics": {
+    "pending_assignments": 3,
+    "overdue_assignments": 1,
+    "submitted_awaiting_review": 2,
+    "completion_percent": 78
+  },
+  "upcoming_live": [
+    {
+EduBridge – Complete Project Documentation
+Page 18 of 47
+
+=== PAGE 19 ===
+      "id": "91c0f7a3-8e2d-4d6b-b1a5-5e3c7d9f2a44",
+      "title": "Light and Reflection",
+      "subject_name": "Science",
+      "scheduled_start": "2026-11-20T04:30:00Z",
+      "duration_minutes": 45,
+      "status": "SCHEDULED"
+    }
+  ]
+}
+9.6 Content
+GET /content/subjects/{subject_id}/materials
+Students get a 403 if the subject belongs to another class. Chapters with a future
+release_at are returned with locked set to true and no materials.
+Response 200
+{
+  "subject": { "id": "2a8e5d10-77c4-4b0e-9a63-1d7f0c9b3e21", "name": 
+"Science" },
+  "chapters": [
+    {
+      "id": "c71b2e90-4f3a-4c1d-8d55-6a0e9b7f1c32",
+      "title": "1. Crop Production",
+      "order_index": 1,
+      "locked": false,
+      "release_at": null,
+      "materials": [
+        {
+          "id": "e4a9d3c1-5b2f-4e7a-a8c6-0f1d2b3c4d55",
+          "title": "Chapter 1 Notes",
+          "material_type": "PDF_NOTES",
+          "file_size_bytes": 2457600,
+          "is_downloadable": true,
+          "url": "https://api.edubridge.example/api/v1/files/eyJrIjoi...",
+          "url_expires_at": "2026-11-20T09:45:00Z"
+        },
+        {
+          "id": "f5b0e4d2-6c3a-4f8b-b9d7-1a2e3c4d5e66",
+          "title": "Video lecture",
+          "material_type": "VIDEO_STREAM",
+          "file_size_bytes": 104857600,
+          "is_downloadable": false,
+          "url": "https://api.edubridge.example/api/v1/files/eyJrIjoi...",
+EduBridge – Complete Project Documentation
+Page 19 of 47
+
+=== PAGE 20 ===
+          "url_expires_at": "2026-11-20T09:45:00Z"
+        }
+      ]
+    }
+  ]
+}
+9.7 Admin: classes and students
+POST /admin/classes
+{
+  "grade_level": 8,
+  "section": "A",
+  "academic_year": "2026-27"
+}
+Response 201
+{
+  "id": "0d9a5c64-2b1f-47a7-9e11-3c5b8d2f6a01",
+  "grade_level": 8,
+  "section": "A",
+  "academic_year": "2026-27",
+  "student_count": 0
+}
+Duplicate grade, section and year returns 409 CLASS_EXISTS. grade_level outside 3 to 12
+returns 422.
+GET /admin/classes
+Returns an array of the same class objects with student_count filled in.
+POST /admin/students
+{
+  "full_name": "Aarav Kumar",
+  "phone_number": "9876543210",
+  "class_id": "0d9a5c64-2b1f-47a7-9e11-3c5b8d2f6a01",
+  "roll_number": "07",
+  "guardian_name": "Suresh Kumar",
+  "guardian_phone": "9876500000",
+  "password": null
+}
+EduBridge – Complete Project Documentation
+Page 20 of 47
+
+=== PAGE 21 ===
+If password is null the server generates a random 8 character password and returns it
+once.
+Response 201
+{
+  "id": "b3d6a7f2-1c3e-4a55-8a0e-2f6d9c4e1a90",
+  "user_id": "6f1c1b0e-6a52-4d0a-9f4b-0e2f0a1d7c11",
+  "full_name": "Aarav Kumar",
+  "phone_number": "9876543210",
+  "class_id": "0d9a5c64-2b1f-47a7-9e11-3c5b8d2f6a01",
+  "roll_number": "07",
+  "generated_password": "Xk7pQ2mA"
+}
+Errors: 409 PHONE_EXISTS, 409 ROLL_EXISTS.
+GET /admin/students
+Query: class_id, search (name, phone or roll number), is_active, page, page_size.
+{
+  "items": [
+    {
+      "id": "b3d6a7f2-1c3e-4a55-8a0e-2f6d9c4e1a90",
+      "full_name": "Aarav Kumar",
+      "phone_number": "9876543210",
+      "roll_number": "07",
+      "grade_level": 8,
+      "section": "A",
+      "is_active": true,
+      "last_login_at": "2026-11-19T14:02:11Z"
+    }
+  ],
+  "page": 1,
+  "page_size": 20,
+  "total": 1
+}
+PATCH /admin/students/{id}
+Any subset of: full_name, class_id, roll_number, guardian_name, guardian_phone,
+is_active, new_password.
+{ "is_active": false }
+EduBridge – Complete Project Documentation
+Page 21 of 47
+
+=== PAGE 22 ===
+POST /admin/students/import
+Multipart field file (CSV, max 5 MB). Columns: full_name, phone_number, grade_level,
+section, roll_number, guardian_name, guardian_phone. The class must already exist for
+the current academic year.
+Response 200
+{
+  "created": 48,
+  "skipped": 2,
+  "errors": [
+    { "row": 12, "phone_number": "9876543210", "error": "PHONE_EXISTS" },
+    { "row": 31, "phone_number": "98765", "error": "INVALID_PHONE" }
+  ],
+  "credentials_csv_url": 
+"https://api.edubridge.example/api/v1/files/eyJrIjoi..."
+}
+The credentials file lists phone number and generated password for every created
+student and expires in 15 minutes. Admin should download it immediately and distribute it
+to guardians.
+GET /admin/students/{id}/activity
+{
+  "student_id": "b3d6a7f2-1c3e-4a55-8a0e-2f6d9c4e1a90",
+  "last_login_at": "2026-11-19T14:02:11Z",
+  "assignments_total": 18,
+  "assignments_submitted": 14,
+  "assignments_graded": 12,
+  "average_percent": 81.5,
+  "live_classes_total": 10,
+  "live_classes_attended": 9,
+  "attendance_percent": 90.0
+}
+GET /admin/stats
+{
+  "students_total": 420,
+  "students_active_7d": 361,
+  "submissions_pending_review": 57,
+  "live_now": 2,
+  "assignments_due_today": 4
+}
+EduBridge – Complete Project Documentation
+Page 22 of 47
+
+=== PAGE 23 ===
+9.8 Admin: subjects, chapters, materials
+POST /admin/subjects
+{
+  "class_id": "0d9a5c64-2b1f-47a7-9e11-3c5b8d2f6a01",
+  "name": "Science",
+  "code": "SCI8"
+}
+Response 201 returns the subject object with id.
+POST /admin/chapters
+{
+  "subject_id": "2a8e5d10-77c4-4b0e-9a63-1d7f0c9b3e21",
+  "title": "1. Crop Production",
+  "order_index": 1,
+  "release_at": "2026-11-25T00:00:00Z"
+}
+POST /admin/materials
+Multipart form fields:
+Response 201
+Field Type Notes
+chapter_id uuid Required
+title string Required
+material_type enum PDF_NOTES, VIDEO_STREAM, DOC,
+EXTERNAL_LINK
+is_downloadable boolean Default true
+file file Required unless EXTERNAL_LINK; PDF up to 25
+MB, video up to 500 MB through direct-to-storage
+upload
+external_url string Required only for EXTERNAL_LINK
+EduBridge – Complete Project Documentation
+Page 23 of 47
+
+=== PAGE 24 ===
+{
+  "id": "e4a9d3c1-5b2f-4e7a-a8c6-0f1d2b3c4d55",
+  "chapter_id": "c71b2e90-4f3a-4c1d-8d55-6a0e9b7f1c32",
+  "title": "Chapter 1 Notes",
+  "material_type": "PDF_NOTES",
+  "file_size_bytes": 2457600,
+  "is_downloadable": true
+}
+DELETE /admin/materials/{id}
+Response 200 with message deleted. The storage object is removed by a background job.
+9.9 Assignments
+POST /assignments/create
+Multipart form fields:
+Response 201
+Field Type Notes
+class_id uuid Required
+subject_id uuid Required; must belong to class_id
+title string Required, max 255
+instructions string Optional
+due_date datetime Required, ISO 8601 UTC, must be in the future
+max_marks integer Default 100
+allow_late_submission boolean Default false
+file file Optional question paper (PDF or image)
+EduBridge – Complete Project Documentation
+Page 24 of 47
+
+=== PAGE 25 ===
+{
+  "id": "a1b2c3d4-0001-4e5f-8a9b-1c2d3e4f5a6b",
+  "class_id": "0d9a5c64-2b1f-47a7-9e11-3c5b8d2f6a01",
+  "subject_id": "2a8e5d10-77c4-4b0e-9a63-1d7f0c9b3e21",
+  "title": "Science Worksheet 4",
+  "instructions": "Answer all questions in your notebook and upload clear 
+photos.",
+  "due_date": "2026-11-27T18:29:00Z",
+  "max_marks": 25,
+  "allow_late_submission": false,
+  "attachment_url": "https://api.edubridge.example/api/v1/files/eyJrIjoi...",
+  "notified_students": 42
+}
+GET /assignments/list
+Query: class_id (admin only), subject_id, status (PENDING, SUBMITTED, GRADED,
+OVERDUE), page, page_size. For students class_id is ignored and the server uses their
+own class.
+Student response 200
+{
+  "items": [
+    {
+      "id": "a1b2c3d4-0001-4e5f-8a9b-1c2d3e4f5a6b",
+      "title": "Science Worksheet 4",
+      "subject_name": "Science",
+      "due_date": "2026-11-27T18:29:00Z",
+      "max_marks": 25,
+      "status": "PENDING",
+      "marks_awarded": null
+    },
+    {
+      "id": "a1b2c3d4-0002-4e5f-8a9b-1c2d3e4f5a6b",
+      "title": "Maths Chapter 3 Exercise",
+      "subject_name": "Maths",
+      "due_date": "2026-11-18T18:29:00Z",
+      "max_marks": 20,
+      "status": "GRADED",
+      "marks_awarded": 18
+    }
+  ],
+EduBridge – Complete Project Documentation
+Page 25 of 47
+
+=== PAGE 26 ===
+  "page": 1,
+  "page_size": 20,
+  "total": 2
+}
+Admin response items add submitted_count, graded_count and total_students.
+GET /assignments/{id}
+{
+  "id": "a1b2c3d4-0001-4e5f-8a9b-1c2d3e4f5a6b",
+  "title": "Science Worksheet 4",
+  "subject_name": "Science",
+  "instructions": "Answer all questions in your notebook and upload clear 
+photos.",
+  "due_date": "2026-11-27T18:29:00Z",
+  "max_marks": 25,
+  "allow_late_submission": false,
+  "attachment_url": "https://api.edubridge.example/api/v1/files/eyJrIjoi...",
+  "answer_key_url": null,
+  "status": "PENDING"
+}
+answer_key_url is null until the key is published.
+POST /assignments/{id}/submit
+Multipart form fields: files (one or more, PDF or JPEG or PNG, up to 10 files, 25 MB each),
+notes (optional string).
+Response 201
+{
+  "id": "5e6f7a8b-0001-4c2d-9e3f-4a5b6c7d8e9f",
+  "assignment_id": "a1b2c3d4-0001-4e5f-8a9b-1c2d3e4f5a6b",
+  "status": "SUBMITTED",
+  "submitted_at": "2026-11-26T15:12:40Z",
+  "files": [
+    { "name": "page1.pdf", "url": 
+"https://api.edubridge.example/api/v1/files/eyJrIjoi..." }
+  ]
+}
+Business rules
+EduBridge – Complete Project Documentation
+Page 26 of 47
+
+=== PAGE 27 ===
+GET /assignments/{id}/my-submission
+{
+  "id": "5e6f7a8b-0001-4c2d-9e3f-4a5b6c7d8e9f",
+  "status": "GRADED",
+  "submitted_at": "2026-11-26T15:12:40Z",
+  "marks_awarded": 22,
+  "max_marks": 25,
+  "feedback_remarks": "Good diagrams. Revise the steps of irrigation.",
+  "graded_at": "2026-11-28T06:10:00Z",
+  "files": [
+    { "name": "page1.pdf", "url": 
+"https://api.edubridge.example/api/v1/files/eyJrIjoi..." }
+  ],
+  "answer_key_url": "https://api.edubridge.example/api/v1/files/eyJrIjoi..."
+}
+9.10 Grading and answer keys
+GET /admin/assignments/{id}/submissions
+Query: status, search, page, page_size. Students who have not submitted are included
+with status PENDING so staff can see the full roster.
+{
+  "assignment": { "id": "a1b2c3d4-0001-4e5f-8a9b-1c2d3e4f5a6b", "title": 
+"Science Worksheet 4", "max_marks": 25 },
+  "items": [
+    {
+      "submission_id": "5e6f7a8b-0001-4c2d-9e3f-4a5b6c7d8e9f",
+      "student_id": "b3d6a7f2-1c3e-4a55-8a0e-2f6d9c4e1a90",
+Situation Result
+Before due date status SUBMITTED
+After due date and allow_late_submission true status LATE
+After due date and allow_late_submission false 400 LATE_NOT_ALLOWED
+Already GRADED 400 ALREADY_GRADED
+Already submitted, not graded, or status
+RESUBMISSION_REQUESTED
+Files are replaced and submitted_at
+updated
+Assignment belongs to another class 404 NOT_FOUND
+EduBridge – Complete Project Documentation
+Page 27 of 47
+
+=== PAGE 28 ===
+      "student_name": "Aarav Kumar",
+      "roll_number": "07",
+      "status": "SUBMITTED",
+      "submitted_at": "2026-11-26T15:12:40Z",
+      "files": [ { "name": "page1.pdf", "url": 
+"https://api.edubridge.example/api/v1/files/eyJrIjoi..." } ],
+      "student_notes": "Question 5 is on the last page"
+    },
+    {
+      "submission_id": null,
+      "student_id": "c4e7b8a3-2d4f-4b66-9b1f-3a7e0d5f2b01",
+      "student_name": "Diya Sharma",
+      "roll_number": "08",
+      "status": "PENDING",
+      "submitted_at": null,
+      "files": []
+    }
+  ],
+  "page": 1,
+  "page_size": 50,
+  "total": 42
+}
+PATCH /admin/submissions/{id}/grade
+Request
+{
+  "marks": 22,
+  "remarks": "Good diagrams. Revise the steps of irrigation.",
+  "request_resubmission": false
+}
+Response 200
+{
+  "id": "5e6f7a8b-0001-4c2d-9e3f-4a5b6c7d8e9f",
+  "status": "GRADED",
+  "marks_awarded": 22,
+  "feedback_remarks": "Good diagrams. Revise the steps of irrigation.",
+  "graded_at": "2026-11-28T06:10:00Z",
+  "graded_by": "1a2b3c4d-0000-4a5b-8c9d-0e1f2a3b4c5d"
+}
+EduBridge – Complete Project Documentation
+Page 28 of 47
+
+=== PAGE 29 ===
+Rules: marks must be between 0 and the assignment max_marks, otherwise 422. If
+request_resubmission is true the status becomes RESUBMISSION_REQUESTED, marks
+are optional and the student is notified. A push is sent to the student after grading.
+POST /admin/assignments/{id}/answer-key
+Multipart field file (PDF or image). Stores the key but keeps it hidden.
+{ "message": "Answer key uploaded", "published": false }
+POST /admin/assignments/{id}/publish-answer-key
+Request body is optional. Publishing is refused before the due date unless force is true.
+{ "force": false }
+Response 200
+{ "message": "Answer key published", "published": true, "notified_students": 
+42 }
+9.11 Live classes
+POST /live/start
+Request. Leave scheduled_start null to start immediately.
+{
+  "class_id": "0d9a5c64-2b1f-47a7-9e11-3c5b8d2f6a01",
+  "subject_id": "2a8e5d10-77c4-4b0e-9a63-1d7f0c9b3e21",
+  "title": "Light and Reflection",
+  "scheduled_start": "2026-11-20T04:30:00Z",
+  "duration_minutes": 45
+}
+Response 201
+EduBridge – Complete Project Documentation
+Page 29 of 47
+
+=== PAGE 30 ===
+{
+  "id": "91c0f7a3-8e2d-4d6b-b1a5-5e3c7d9f2a44",
+  "title": "Light and Reflection",
+  "status": "SCHEDULED",
+  "scheduled_start": "2026-11-20T04:30:00Z",
+  "duration_minutes": 45,
+  "meeting_room_id": "eb-8f3a1c9d2e7b4a60",
+  "notified_students": 42
+}
+When started immediately, status is IN_PROGRESS and the push uses high priority.
+GET /live/upcoming
+Students see classes of their own class from the start of today onward, ordered by
+scheduled_start. Query: include_completed (default false).
+{
+  "items": [
+    {
+      "id": "91c0f7a3-8e2d-4d6b-b1a5-5e3c7d9f2a44",
+      "title": "Light and Reflection",
+      "subject_name": "Science",
+      "scheduled_start": "2026-11-20T04:30:00Z",
+      "duration_minutes": 45,
+      "status": "IN_PROGRESS",
+      "can_join": true
+    }
+  ]
+}
+can_join is true from 10 minutes before the start until the class ends. The meeting token is
+not included here; it is issued by join.
+POST /live/{id}/join
+Creates or updates the attendance row. A second join by the same student increments
+reconnects.
+EduBridge – Complete Project Documentation
+Page 30 of 47
+
+=== PAGE 31 ===
+{
+  "provider": "jitsi",
+  "domain": "meet.eduBridge.example",
+  "room": "eb-8f3a1c9d2e7b4a60",
+  "jwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "display_name": "Aarav Kumar",
+  "start_muted": true,
+  "is_moderator": false,
+  "expires_in": 3600
+}
+Errors: 403 NOT_YOUR_CLASS, 400 CLASS_NOT_STARTED, 400 CLASS_ENDED.
+POST /live/{id}/leave
+{ "message": "left", "duration_seconds": 2412 }
+Duration accumulates across reconnects. If the app is killed without calling leave, the
+server closes open rows when the class ends, using the end time.
+POST /live/{id}/end
+{ "status": "COMPLETED", "attendees": 39 }
+GET /live/{id}/attendance
+{
+  "live_class": { "id": "91c0f7a3-8e2d-4d6b-b1a5-5e3c7d9f2a44", "title": 
+"Light and Reflection", "duration_minutes": 45 },
+  "summary": { "enrolled": 42, "attended": 39, "absent": 3, 
+"average_minutes": 38 },
+  "items": [
+    {
+      "student_id": "b3d6a7f2-1c3e-4a55-8a0e-2f6d9c4e1a90",
+      "student_name": "Aarav Kumar",
+      "roll_number": "07",
+      "joined_at": "2026-11-20T04:28:10Z",
+      "left_at": "2026-11-20T05:08:22Z",
+      "duration_seconds": 2412,
+      "reconnects": 1,
+      "present": true
+    }
+  ]
+}
+EduBridge – Complete Project Documentation
+Page 31 of 47
+
+=== PAGE 32 ===
+GET /live/{id}/attendance.csv
+Content-Type text/csv. Columns: roll_number, student_name, present, joined_at, left_at,
+duration_minutes, reconnects.
+9.12 File download
+GET /ﬁles/{token}
+The token is an HMAC-signed value that encodes the storage key and expiry time. The
+server checks the signature and expiry, blocks path traversal, then streams the file with
+the right Content-Type. Expired or tampered tokens return 403 LINK_EXPIRED. When
+storage is S3 or R2, the API returns a native presigned URL with the same 15 minute
+lifetime instead.
+10. Push Notifications (FCM)
+10.1 Events
+Event Recipients Priority Title and body Deep link
+ASSIGNMENT_CREATED All active
+students of
+the class
+Normal New Science
+assignment:
+Worksheet 4. Due
+Fri 27 Nov
+/assignments/{id}
+ASSIGNMENT_DUE_SOON Students with
+no submission
+Normal Worksheet 4 is
+due in 24 hours
+/assignments/{id}
+SUBMISSION_GRADED The one
+student
+Normal Your Science work
+is graded: 22/25
+/assignments/{id}/result
+RESUBMISSION_REQUESTED The one
+student
+Normal Please resubmit
+Science
+Worksheet 4
+/assignments/{id}
+ANSWER_KEY_PUBLISHED All students
+of the class
+Normal Answer key
+available for
+Worksheet 4
+/assignments/{id}
+LIVE_STARTED All students
+of the class
+High Science class is
+live now. Tap to
+join
+/live/{id}
+LIVE_SCHEDULED All students
+of the class
+Normal Science class on
+Fri at 10:00 AM
+/live/{id}
+LIVE_REMINDER All students
+of the class
+High Class starts in 10
+minutes
+/live/{id}
+EduBridge – Complete Project Documentation
+Page 32 of 47
+
+=== PAGE 33 ===
+10.2 Payload sent to FCM
+{
+  "message": {
+    "token": "fcm_device_registration_token_string",
+    "notification": {
+      "title": "Science class is live now",
+      "body": "Light and Reflection. Tap to join"
+    },
+    "data": {
+      "event": "LIVE_STARTED",
+      "entity_id": "91c0f7a3-8e2d-4d6b-b1a5-5e3c7d9f2a44",
+      "deep_link": "/live/91c0f7a3-8e2d-4d6b-b1a5-5e3c7d9f2a44"
+    },
+    "android": {
+      "priority": "high",
+      "notification": { "channel_id": "live_classes", "sound": "default" }
+    }
+  }
+}
+10.3 Delivery rules
+Fan-out runs in a Celery task. The API call that triggers it returns without waiting.
+Tokens are sent in batches of 500. Tokens FCM reports as unregistered are deleted
+from device_tokens.
+A user with several devices receives the push on every device.
+Each push is also stored in an in-app notifications list so a missed push can still be read.
+Android channels: live_classes (high importance), homework (default), general (low).
+Event Recipients Priority Title and body Deep link
+MATERIAL_ADDED All students
+of the class
+Normal New notes added
+in Science: Crop
+Production
+/subjects/{id}
+EduBridge – Complete Project Documentation
+Page 33 of 47
+
+=== PAGE 34 ===
+11. Live Class Integration
+11.1 Provider choice
+The design below uses Jitsi with JWT. The same join endpoint can return a Zoom signature
+instead by changing the provider field.
+11.2 Token (JWT) claims issued by POST /live/{id}/join
+{
+  "aud": "jitsi",
+  "iss": "edubridge-app-id",
+  "sub": "meet.eduBridge.example",
+  "room": "eb-8f3a1c9d2e7b4a60",
+  "exp": 1795233600,
+  "nbf": 1795230000,
+  "context": {
+    "user": {
+      "id": "b3d6a7f2-1c3e-4a55-8a0e-2f6d9c4e1a90",
+      "name": "Aarav Kumar",
+      "moderator": false
+    }
+  }
+}
+The token is signed with the shared app secret, lives for one hour, and is bound to one
+room. Teachers and admins get moderator true. Room names are random and never
+reused.
+Option Cost Control Notes
+Self-hosted
+Jitsi Meet
+Server cost
+only
+Full; JWT auth,
+moderator rules,
+branding
+Recommended; needs a
+server with UDP port 10000
+open
+Jitsi as a
+Service (8x8)
+Per monthly
+active user
+JWT auth supported Fastest to launch, no server
+work
+Zoom Video
+SDK
+Per minute Strong, with recording Higher cost, more native-SDK
+work
+Public
+meet.jit.si
+Free No custom JWT Not suitable: rooms cannot be
+locked to a class
+EduBridge – Complete Project Documentation
+Page 34 of 47
+
+=== PAGE 35 ===
+11.3 Classroom rules
+Students join with microphone and camera off; only moderators can unmute them.
+Lobby is disabled because the JWT already proves identity.
+Chat is on, with a profanity filter applied by the moderator tools; the moderator can
+disable chat or mute all.
+Recording is optional. When enabled, recording_url is stored on the live class and
+shown to the class after processing.
+Low bandwidth: the app offers an audio-only toggle and lowers video to 180p
+automatically after two connection drops.
+11.4 Attendance logic
+1. First join creates the row with joined_at and zero reconnects.
+2. Each later join adds one to reconnects and clears left_at.
+3. Leave adds (now minus last join time) to duration_seconds and sets left_at.
+4. When the class ends, any open row is closed at the end time.
+5. A student counts as present if total duration is at least 10 minutes. The threshold is a
+setting.
+12. Security, Privacy and Compliance
+12.1 Technical controls
+Area Control
+Transport HTTPS only with TLS 1.2 or higher; HSTS enabled
+Passwords Salted bcrypt, minimum 8 characters, never logged
+Tokens JWT HS256 or RS256, 12 hour life, secret in
+environment variable, rotated on compromise
+Authorization Role guard on each route plus server-side class
+filter for students
+Files Private bucket; only signed URLs of 15 minutes;
+PDF watermark with student name; file type and
+size checks; antivirus scan job for uploads
+Uploads Allowed types PDF, JPEG, PNG; magic-byte check,
+not just extension; random storage keys
+EduBridge – Complete Project Documentation
+Page 35 of 47
+
+=== PAGE 36 ===
+12.2 Child data protection
+EduBridge stores personal data of minors, so privacy rules apply from day one.
+India (DPDP Act 2023): processing a child's data (under 18) needs verifiable consent
+from a parent or guardian, and the Act prohibits tracking, behavioural monitoring and
+targeted advertising aimed at children. Plan: the school collects consent at admission
+and the admin records it per student; the app shows no ads and runs no analytics SDK
+that profiles students.
+COPPA (United States): applies only if the product is offered to children under 13 in
+the US. It is listed in the original proposal for completeness; confirm applicability
+before launch.
+Data minimisation: store only name, phone, class, roll number and guardian contact.
+No location, contacts or microphone data are collected outside live classes.
+Retention: submissions and attendance are kept for the academic year plus one year,
+then deleted or anonymised on school request.
+Parent rights: a guardian can request a copy or deletion of the child's data through the
+school admin; the admin tool must support export and delete for one student.
+Legal review: these notes are engineering guidance. Have counsel confirm the consent
+flow and retention policy before the pilot.
+Area Control
+Input Pydantic validation; parameterised queries only
+through the ORM
+Rate limits Login 5 attempts per 10 minutes per phone; API 120
+requests per minute per user
+Secrets Environment variables or a secrets manager;
+nothing in the repository
+Audit audit_logs for grading, publishing, student creation,
+role changes, password resets
+Backups Hourly incremental plus daily full database backup;
+storage versioning; quarterly restore test
+Mobile Token in secure storage; certificate pinning
+optional; screenshots blocked on PDF viewer
+where Android allows
+EduBridge – Complete Project Documentation
+Page 36 of 47
+
+=== PAGE 37 ===
+13. Non-Functional Requirements
+14. Technology Stack and Repository Layout
+Category Requirement
+Performance API p95 latency under 300 ms at 500 concurrent
+users for read endpoints; uploads excluded
+App start Cold start under 3 seconds on a 2 GB RAM Android
+8 device
+Availability 99.5% monthly target; database and storage
+failover plan documented
+Scalability One API node serves a 2,000 student school;
+horizontal scaling behind Nginx for more
+Compatibility Android 8.0 to 15; screens from 5.5 inch phones to
+11 inch tablets; admin web on current Chrome,
+Edge, Firefox, Safari
+Network Resumable uploads; retry with backoff; all lists
+cached for offline reading
+Accessibility Text scaling, contrast ratio 4.5:1, touch targets at
+least 48 dp, labels for screen readers
+Localisation English first; string files prepared for Tamil and
+Hindi
+Observability Structured JSON logs, request ID on every
+response, health endpoint at /health
+Area Choice Reason
+Mobile Flutter 3.x, Dart, Riverpod, Dio,
+go_router, Hive or Drift for local cache,
+image_picker, firebase_messaging
+One codebase, strong offline and
+upload support
+Admin
+web
+React 19, TypeScript, Vite or Next.js,
+Tailwind CSS, shadcn/ui, TanStack
+Query, React Hook Form with Zod
+Fast admin tooling with typed forms
+Backend FastAPI, Python 3.12, Pydantic v2,
+SQLAlchemy 2, Alembic migrations
+Async capable, automatic OpenAPI
+docs
+EduBridge – Complete Project Documentation
+Page 37 of 47
+
+=== PAGE 38 ===
+14.1 Repository layout
+edubridge/
+  docker-compose.yml
+  README.md
+  docs/
+  backend/
+    app/
+      main.py
+      config.py
+      db.py
+      models.py
+      schemas.py
+      security.py
+      deps.py
+      storage.py
+      notifications.py
+      routers/
+        auth.py  devices.py  student.py  content.py
+        admin.py  assignments.py  live.py  files.py
+      workers/
+        celery_app.py  tasks.py
+    alembic/
+    tests/
+    Dockerfile
+    requirements.txt
+  admin-web/
+    src/ (pages, components, api, hooks)
+    Dockerfile
+  mobile/
+    lib/ (core, features, shared)
+Area Choice Reason
+Workers Celery with Redis Push fan-out, imports, scheduled
+reminders (Celery beat)
+Database PostgreSQL 16 Constraints, indexes, full-text
+search
+Storage S3 or Cloudflare R2, local disk for
+development
+Private bucket with presigned URLs
+DevOps Docker, Docker Compose, Nginx,
+GitHub Actions
+Simple single-server start, scalable
+later
+EduBridge – Complete Project Documentation
+Page 38 of 47
+
+=== PAGE 39 ===
+    pubspec.yaml
+  deploy/
+    nginx.conf
+    backup.sh
+14.2 Environment variables
+15. DevOps and Deployment
+15.1 Environments
+Variable Example Purpose
+DATABASE_URL postgresql+psycopg2://user:pass@db:5432/edubri
+dge
+Database
+connection
+SECRET_KEY long random string JWT and
+signed URL
+secret
+ACCESS_TOKEN_MINUTES 720 Token life
+STORAGE_BACKEND local or s3 File storage
+mode
+S3_BUCKET, S3_ENDPOINT,
+S3_ACCESS_KEY, S3_SECRET_KEY
+per provider Object storage
+SIGNED_URL_TTL_SECONDS 900 Signed URL life
+REDIS_URL redis://redis:6379/0 Cache and
+Celery broker
+JITSI_DOMAIN, JITSI_APP_ID,
+JITSI_APP_SECRET
+per server Live class
+tokens
+FCM_CREDENTIALS_FILE /run/secrets/fcm.json Firebase
+service
+account
+CORS_ORIGINS https://admin.edubridge.example Allowed web
+origins
+MAX_UPLOAD_MB 25 Upload limit
+Environment Purpose Data
+Local Developer machine, Docker Compose, SQLite or
+Postgres
+Seed data
+EduBridge – Complete Project Documentation
+Page 39 of 47
+
+=== PAGE 40 ===
+15.2 Deployment steps (single server)
+1. Provision an Ubuntu 22.04 or 24.04 server with 4 vCPU, 8 GB RAM, 100 GB disk, and a
+domain with DNS records for api and admin.
+2. Install Docker and Docker Compose. Copy the repository and create the .env file from
+.env.example.
+3. Run docker compose up -d to start db, redis, api, worker and nginx.
+4. Run alembic upgrade head, then the seed command to create the first Super Admin.
+5. Issue TLS certificates with Certbot and enable auto-renewal.
+6. Build the admin web and serve it from Nginx.
+7. Upload the FCM service account file and set FCM_CREDENTIALS_FILE.
+8. Build the Android release (flutter build appbundle), sign it, and upload to Play Console
+internal testing first.
+15.3 CI/CD pipeline (GitHub Actions)
+15.4 Backups and monitoring
+pg_dump every night plus WAL archiving or hourly incremental backups; keep 7 daily, 4
+weekly, 6 monthly copies.
+Environment Purpose Data
+Staging Pilot testing and demos Anonymised sample
+data
+Production Live schools Real data, backups on
+Stage Action
+Lint and type check ruff and mypy for backend; eslint and tsc for
+admin; flutter analyze for mobile
+Test pytest with Postgres service container; vitest for
+admin; flutter test
+Build Docker images tagged with commit SHA; flutter
+build appbundle
+Deploy On merge to main: push images, SSH to staging, run
+migrations, smoke test /health. Production deploy
+needs manual approval
+EduBridge – Complete Project Documentation
+Page 40 of 47
+
+=== PAGE 41 ===
+Object storage versioning and a lifecycle rule for deleted files.
+Uptime check on /health, error tracking with Sentry, container metrics with
+Prometheus and Grafana or a hosted equivalent.
+Alerts: API error rate above 2%, disk above 80%, failed backup, push failure rate above
+10%.
+16. Testing Strategy
+Level Scope Tools
+Unit Password hashing, status calculation,
+signed URL signing and expiry,
+attendance duration maths
+pytest
+API
+integration
+Every endpoint in section 9 with
+success and failure cases, including
+class isolation (Class 4 student
+requesting Class 10 data must get
+404)
+pytest with TestClient and a test
+database
+Contract OpenAPI schema compared in CI so
+mobile and web clients do not break
+schemathesis or openapi-diff
+Mobile Widget tests for login, assignment list
+and submit; integration test for the
+full submit flow on an emulator
+flutter test, integration_test
+Web Component tests and end-to-end
+grading flow
+vitest, Playwright
+Load 500 virtual users on dashboard,
+assignment list and material
+endpoints
+k6 or Locust
+Network Upload on throttled 2G profile; kill
+and resume
+Android emulator network profiles,
+Toxiproxy
+Security Auth bypass, IDOR, file type
+spoofing, expired link reuse, rate limit
+OWASP ZAP, manual checks
+UAT One pilot class of 30 students and 3
+teachers for two weeks
+Feedback form
+EduBridge – Complete Project Documentation
+Page 41 of 47
+
+=== PAGE 42 ===
+16.1 Critical end-to-end scenarios
+1. Admin creates class, subject, chapter and uploads a PDF; student of that class sees it,
+student of another class does not.
+2. Admin creates an assignment; students receive a push; one student submits three
+photos; admin grades 22 of 25; student sees marks and remarks.
+3. A student submits after the due date with late submission disabled and is refused;
+with it enabled the submission is marked LATE.
+4. Admin starts a live class; students receive a high-priority push; two students join, one
+drops and reconnects; attendance CSV shows correct duration and reconnect count.
+5. A deactivated student cannot log in and an existing token stops working on the next
+request.
+6. A signed file URL stops working after 15 minutes.
+17. Roadmap and Effort
+17.1 Timeline
+The proposal calls this a 12 week plan, but its Gantt dates run from 1 Nov 2026 to about 6
+Mar 2027, which is about 18 weeks. The table below uses the Gantt dates, which are the
+more realistic ones.
+Phase Work package Start Length
+1 MVP Requirement validation and database schema 1 Nov 2026 10 days
+1 MVP Backend auth and course API 11 Nov 2026 14 days
+1 MVP Admin web: content and student setup 20 Nov 2026 14 days
+1 MVP Flutter app: login and notes 25 Nov 2026 14 days
+1 MVP Assignment pipeline and file uploads 5 Dec 2026 14 days
+1 MVP Internal alpha testing and hardening 19 Dec 2026 7 days
+2 Live and alerts FCM push pipeline 26 Dec 2026 7 days
+2 Live and alerts Live meeting SDK integration 2 Jan 2027 14 days
+2 Live and alerts Attendance engine and reports 16 Jan 2027 7 days
+2 Live and alerts Beta with pilot school batch 23 Jan 2027 7 days
+3 Scale Teacher portal with scoped access 30 Jan 2027 14 days
+EduBridge – Complete Project Documentation
+Page 42 of 47
+
+=== PAGE 43 ===
+17.2 Deliverables per phase
+17.3 Team assumption
+Plan assumes one full stack lead (Harish Kumar D) plus one Flutter developer and one
+tester or QA part time. With a single developer, add roughly 40% to each phase.
+18. Risks and Mitigation
+Phase Work package Start Length
+3 Scale Parent reporting and offline caching 13 Feb 2027 14 days
+3 Scale Production deployment and store release 27 Feb 2027 7 days
+Phase Deliverables
+1 Backend with auth, classes, students, content,
+assignments, grading; admin web for these; Flutter
+app with login, content, offline PDFs, assignment
+submit and results
+2 FCM notifications, live classes with attendance
+and CSV export, beta release to pilot batch
+3 Teacher accounts with scoped permissions, parent
+weekly digest (WhatsApp Business API or SMS),
+offline caching hardening, AI doubt solver over
+syllabus PDFs, Play Store release
+Risk Severity Likelihood Mitigation
+Upload failures on 2G and 3G High High Chunked upload with resume;
+compress images to under 300
+KB per page before upload; retry
+queue stored locally
+Low-RAM devices crash Medium High Render PDF pages lazily, release
+page cache on exit, limit image
+size, test on 2 GB devices
+Live session bandwidth High Medium Audio-only mode, 180p fallback,
+simulcast on Jitsi
+EduBridge – Complete Project Documentation
+Page 43 of 47
+
+=== PAGE 44 ===
+19. Acceptance Criteria and Definition of Done
+Risk Severity Likelihood Mitigation
+Fake submission times Low Low Server timestamp only; device
+clock ignored
+Child data compliance gap High Medium Consent record per student,
+legal review before pilot, no
+analytics SDKs
+FCM delivery delays on
+aggressive battery savers
+Medium Medium In-app notification list, in-app
+polling on app open, guidance
+screen for battery settings
+Storage and video cost growth Medium Medium Compress video, lifecycle rules,
+cap video length, use R2 to avoid
+egress fees
+Single developer bottleneck Medium Medium Strict phase scope, OpenAPI
+contract first so web and mobile
+can progress in parallel
+Zoom or Jitsi provider change Low Low Provider field and token logic
+isolated in one module
+Android app runs smoothly on Android 8.0 to 15 and on 5.5 inch to 11 inch screens.
+95th percentile API latency is below 300 ms with 500 concurrent users on read
+endpoints.
+A homework capture made offline is kept locally and uploaded automatically once the
+network returns; no data loss.
+Student of one class cannot read any content, assignment or live room of another class
+(verified by automated tests).
+Signed file URLs expire after 15 minutes and cannot be reused.
+Full assignment loop works: create, push, submit, grade, notify, answer key.
+Live class attendance matches a manual check for a test session of at least 10
+students.
+Hourly incremental backups run and a restore test succeeds.
+All endpoints in section 9 are covered by automated tests and appear in the generated
+OpenAPI document.
+Security checklist in section 12 is signed off and the consent process is approved.
+EduBridge – Complete Project Documentation
+Page 44 of 47
+
+=== PAGE 45 ===
+Appendix A. Error Code Catalogue
+Appendix B. Sample Student Import CSV
+full_name,phone_number,grade_level,section,roll_number,guardian_name,guardian
+_phone
+Aarav Kumar,9876543210,8,A,07,Suresh Kumar,9876500000
+Diya Sharma,9876543211,8,A,08,Meena Sharma,9876500001
+Kabir Singh,9876543212,9,B,12,Harpreet Singh,9876500002
+Code HTTP Meaning
+INVALID_CREDENTIALS 401 Wrong phone or password
+ACCOUNT_DISABLED 401 User is deactivated
+TOKEN_EXPIRED 401 Access token expired; log in again
+FORBIDDEN 403 Role not allowed for this endpoint
+NOT_YOUR_CLASS 403 Live class or resource belongs to another class
+LINK_EXPIRED 403 Signed file link expired or invalid
+NOT_FOUND 404 Resource missing or hidden
+PHONE_EXISTS 409 Phone number already registered
+ROLL_EXISTS 409 Roll number already used in the class
+CLASS_EXISTS 409 Class, section and year already exist
+LATE_NOT_ALLOWED 400 Due date passed and late submission is off
+ALREADY_GRADED 400 Submission is final
+CLASS_NOT_STARTED 400 Live class cannot be joined yet
+CLASS_ENDED 400 Live class is over
+FILE_TOO_LARGE 413 Upload exceeds limit
+UNSUPPORTED_FILE_TYPE 422 File type not allowed
+VALIDATION_ERROR 422 Body or query invalid
+RATE_LIMITED 429 Too many requests
+INTERNAL_ERROR 500 Unexpected failure
+EduBridge – Complete Project Documentation
+Page 45 of 47
+
+=== PAGE 46 ===
+Appendix C. Changes from Proposal v1.0
+Appendix D. Glossary
+Item Proposal v1.0 This document Reason
+Role name ER diagram says ADMIN,
+DDL says SUPER_ADMIN
+SUPER_ADMIN
+everywhere
+One consistent
+enum
+Submission
+files
+One submission_file_url file_keys list Students upload
+several photos
+File fields file_url columns file_key storage keys Signed URL
+generation; no
+public links
+Answer key Single URL URL plus
+answer_key_published
+flag
+Hidden until staff
+publish
+Chapters No release date release_at Scheduled topic
+release
+requirement
+Attendance Join, leave, duration Plus reconnects Connection drop
+tracking
+requirement
+New tables None device_tokens, audit_logs FCM tokens and
+audit trail
+Timeline Titled 12 weeks About 18 weeks per Gantt
+dates
+Dates did not
+match title
+Live
+provider
+Zoom or Jitsi, unspecified Self-hosted Jitsi with JWT
+recommended
+Public Jitsi
+cannot restrict
+rooms
+Compliance COPPA and DPDP
+together
+DPDP primary, COPPA
+only if US children
+COPPA applies to
+US users under 13
+Term Meaning
+RBAC Role-based access control
+EduBridge – Complete Project Documentation
+Page 46 of 47
+
+=== PAGE 47 ===
+Appendix E. Decisions to Confirm Before Build
+1. Live class provider: self-hosted Jitsi, 8x8 JaaS or Zoom.
+2. Storage: AWS S3 or Cloudflare R2, and the hosting region (India region recommended
+for latency).
+3. Login method for Classes 3 to 5: phone and password, or roll number and school code.
+4. Parent notifications channel for Phase 3: WhatsApp Business API or SMS.
+5. Whether teachers need separate logins in Phase 1 or only the Super Admin is used.
+6. Pilot school, class strength and go-live date.
+Term Meaning
+JWT JSON Web Token, signed token carrying the user
+identity
+FCM Firebase Cloud Messaging, Google's push service
+Signed URL A link with a signature and expiry that grants
+temporary access to one file
+DPDP India's Digital Personal Data Protection Act, 2023
+MVP Minimum viable product, the Phase 1 release
+IDOR Insecure direct object reference, accessing data by
+guessing an ID
+EduBridge – Complete Project Documentation
+Page 47 of 47
+
